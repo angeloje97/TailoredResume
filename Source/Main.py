@@ -4,6 +4,9 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QPushButton, QStackedWidget)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
+from Utility import json_template, full_base_resume_text, save_json_obj
+from Agent import create_request
+import json
 
 
 class ResumeApp(QMainWindow):
@@ -201,12 +204,12 @@ class ResumeApp(QMainWindow):
         main_layout.setContentsMargins(20, 20, 20, 20)
 
         # Title
-        title_label = QLabel("Base Resumes")
+        title_label = QLabel("History")
         title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
         main_layout.addWidget(title_label)
 
         # Placeholder content
-        info_label = QLabel("This page will show the list of human created resumes.")
+        info_label = QLabel("This page will show all the generated resumes.")
         info_label.setStyleSheet("font-size: 12pt; color: #666;")
         main_layout.addWidget(info_label)
 
@@ -222,14 +225,28 @@ class ResumeApp(QMainWindow):
         company_name = self.company_name.text()
         job_desc = self.job_description.toPlainText()
 
-        print("=" * 50)
-        print("GENERATE BUTTON CLICKED")
-        print("=" * 50)
-        print(f"Company Name: {company_name}")
-        print(f"Job Title: {job_title}")
-        print(f"Job Description Length: {len(job_desc)} characters")
-        print(f"\nJob Description Preview:\n{job_desc[:200]}...")
-        print("=" * 50)
+        # print("=" * 50)
+        # print("GENERATE BUTTON CLICKED")
+        # print("=" * 50)
+        # print(f"Company Name: {company_name}")
+        # print(f"Job Title: {job_title}")
+        # print(f"Job Description Length: {len(job_desc)} characters")
+        # print(f"\nJob Description Preview:\n{job_desc[:200]}...")
+        # print("=" * 50)
+
+
+        message = "Using the following texts from a multitude of resumes\n"
+        message += full_base_resume_text + "\n"
+        message += f"Create a tailored resume for the following job description details\n"
+        message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
+        message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
+        message += f"Keep in mine that this will be a 1 page resume with 11 point font. Also 10 lines are reserved by headers or lines."
+
+        response = create_request(message)
+
+        data = json.loads(response)
+
+        save_json_obj(data, f"{company_name} Data")
 
         # TODO: Add your resume generation logic here
 

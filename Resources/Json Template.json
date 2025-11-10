@@ -1,12 +1,28 @@
 {
     "Summary": "",
     "Job 1 Title" : "",
-    "J1 Details" : [],
+    "J1 Details" : [
+        "Details 1",
+        "Details 2",
+        "Details 3",
+        "Details 4",
+        "Details 5"
+    ],
     "Job 2 Title": "",
-    "J2 Details" : [],
+    "J2 Details" : [
+        "Details 1",
+        "Details 2",
+        "Details 3"
+    ],
     "Technical Skills" : "",
     "Personal Project 1" : "",
-    "P1 Details" : [],
+    "P1 Details" : [
+        "Details 1",
+        "Details 2"
+    ],
     "Personal Project 2": "",
-    "P2 Details": []
+    "P2 Details": [
+        "Details 1",
+        "Details 2"
+    ]
 } 

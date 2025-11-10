@@ -11,11 +11,14 @@ base_dir = Path(__file__).parent.parent
 paths = {
     "base_resume": base_dir / "BaseResumes",
     "resources": base_dir / "Resources",
-    "results": base_dir / "Results"
+    "results": base_dir / "Results",
+    "json_data" : base_dir / "Resources" / "Json Data"
 }
 
 base_resumes = []
 base_resume_texts = []
+full_base_resume_text = ""
+
 
 json_template = {}
 resume_template = ""
@@ -29,6 +32,8 @@ def get_base_resumes():
     global base_resumes
 
     folder = Path(paths["base_resume"])
+    ensure_path_exists(folder)
+    
     base_resumes = [f for f in folder.glob("*.docx") if not f.name.startswith("~$")]
 
 def get_docx_text(docx_path):
@@ -44,9 +49,16 @@ def get_docx_text(docx_path):
             for cell in row.cells:
                 full_text.append(cell.text)
 
+    for section in doc.sections:
+        for paragraph in section.header.paragraphs:
+            if paragraph.text.strip():
+                full_text.append(paragraph.text)
+
+        for paragraph in section.footer.paragraphs:
+            if paragraph.text.strip():
+                full_text.append(paragraph.text)
+
     return full_text
-
-
 
 def get_templates():
     global paths
@@ -58,6 +70,20 @@ def get_templates():
 
     with open(json_path, "r", encoding="utf-8") as file:
         json_template = json.load(file)
+
+def save_json_obj(obj, file_name):
+    global paths
+
+    ensure_path_exists(paths["json_data"])
+    full_path = paths["json_data"] / f"{file_name}.json"
+
+
+    with open(full_path, 'w', encoding='utf-8') as file:
+        json.dump(obj, file, indent=4, ensure_ascii=False)
+
+def ensure_path_exists(path):
+    folder_path = Path(path)
+    folder_path.mkdir(exist_okay=True)
 
 def replace_keys(dict_obj, modifier):
     result = {}
@@ -76,8 +102,10 @@ get_templates()
 
 # Populate base resume texts
 for resume in base_resumes:
+    full_base_resume_text += f"\n{'-'*50}\n{resume.name}\n {'-'*50}\n"
     text = get_docx_text(resume)
     base_resume_texts.append('\n'.join(text))
-    ic(base_resume_texts)
+    full_base_resume_text += "\n".join(text)
+
 
 #endregion
