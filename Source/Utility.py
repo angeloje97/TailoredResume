@@ -33,7 +33,7 @@ def get_base_resumes():
 
     folder = Path(paths["base_resume"])
     ensure_path_exists(folder)
-    
+
     base_resumes = [f for f in folder.glob("*.docx") if not f.name.startswith("~$")]
 
 def get_docx_text(docx_path):
@@ -83,7 +83,7 @@ def save_json_obj(obj, file_name):
 
 def ensure_path_exists(path):
     folder_path = Path(path)
-    folder_path.mkdir(exist_okay=True)
+    folder_path.mkdir(exist_ok=True)
 
 def replace_keys(dict_obj, modifier):
     result = {}
