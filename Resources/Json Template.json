@@ -7,31 +7,42 @@
         "Note from ChatGPT": ""
     },
 
-    "Summary": "",
-    "Job1Title" : "Software Engineer - Company Name - (2023-2025)",
-    "J1Details" : [
-        "Details1",
-        "Details2",
-        "Details3",
-        "Details4",
-        "Details5",
-        "Details6"
-    ],
-    "Job2Title": "Software Engineer - Company Name - (2022-2023)",
-    "J2Details" : [
-        "Details1",
-        "Details2",
-        "Details3"
-    ],
-    "TechnicalSkills" : "",
-    "PersonalProject1" : "{Project Name} - {Tech Stack}",
-    "P1Details" : [
-        "Details1",
-        "Details2"
-    ],
-    "PersonalProject2": "{Project Name} - {Tech Stack}",
-    "P2Details": [
-        "Details1",
-        "Details2"
-    ]
+    "Resume": {
+        "Summary": "",
+        "Job1Title" : "Software Engineer - Company Name - (2023-2025)",
+        "J1Details" : [
+            "Details1",
+            "Details2",
+            "Details3",
+            "Details4",
+            "Details5",
+            "Details6"
+        ],
+        "Job2Title": "Software Engineer - Company Name - (2022-2023)",
+        "J2Details" : [
+            "Details1",
+            "Details2",
+            "Details3"
+        ],
+        "TechnicalSkills" : "",
+        "PersonalProject1" : "{Project Name} - {Tech Stack}",
+        "P1Details" : [
+            "Details1",
+            "Details2"
+        ],
+        "PersonalProject2": "{Project Name} - {Tech Stack}",
+        "P2Details": [
+            "Details1",
+            "Details2"
+        ]
+    },
+
+    "CoverLetter" : {
+        "Date": "January 1st, 2025",
+        "CompanyName": "",
+        "Paragraph1": "",
+        "Paragraph2": "",
+        "Paragraph3": ""
+    }
+    
 } 
