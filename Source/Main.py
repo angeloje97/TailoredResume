@@ -1,12 +1,41 @@
 import sys
+import asyncio
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QLineEdit, QTextEdit,
                                QPushButton, QStackedWidget)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon
-from Utility import json_template, full_base_resume_text, save_json_obj
+from Utility import json_template, full_base_resume_text, save_json_obj, expand_list_to_keys
 from Agent import create_request
 import json
+
+
+class AIWorker(QThread):
+    """Worker thread for async AI requests"""
+    finished = Signal(str)  # Signal to emit the response
+    error = Signal(str)     # Signal to emit errors
+
+    def __init__(self, message):
+        super().__init__()
+        self.message = message
+
+    def run(self):
+        """Run the async request in a separate thread"""
+        try:
+            # Create a new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # Run the async function
+            response = loop.run_until_complete(create_request(self.message))
+
+            # Emit success signal
+            self.finished.emit(response)
+
+            loop.close()
+        except Exception as e:
+            # Emit error signal
+            self.error.emit(str(e))
 
 
 class ResumeApp(QMainWindow):
@@ -225,30 +254,48 @@ class ResumeApp(QMainWindow):
         company_name = self.company_name.text()
         job_desc = self.job_description.toPlainText()
 
-        # print("=" * 50)
-        # print("GENERATE BUTTON CLICKED")
-        # print("=" * 50)
-        # print(f"Company Name: {company_name}")
-        # print(f"Job Title: {job_title}")
-        # print(f"Job Description Length: {len(job_desc)} characters")
-        # print(f"\nJob Description Preview:\n{job_desc[:200]}...")
-        # print("=" * 50)
+        # Disable button while processing
+        self.generate_button.setEnabled(False)
+        self.generate_button.setText("Generating...")
 
-
+        # Build the AI prompt
         message = "Using the following texts from a multitude of resumes\n"
         message += full_base_resume_text + "\n"
         message += f"Create a tailored resume for the following job description details\n"
         message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
         message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
-        message += f"Keep in mine that this will be a 1 page resume with 11 point font. Also 10 lines are reserved by headers or lines."
+        message += f"Keep in mine that this will be a 1 page resume with 11 point font. Also 10 lines are reserved by headers or lines. There are 32 free lines to write in"
 
-        response = create_request(message)
+        # Store company name for use in callback
+        self.current_company_name = company_name
 
-        data = json.loads(response)
+        # Create and start worker thread
+        self.worker = AIWorker(message)
+        self.worker.finished.connect(self.on_ai_response)
+        self.worker.error.connect(self.on_ai_error)
+        self.worker.start()
 
-        save_json_obj(data, f"{company_name} Data")
+    def on_ai_response(self, response):
+        """Handle successful AI response"""
+        try:
+            data = json.loads(response)
+            save_json_obj(expand_list_to_keys(data, " "), f"{self.current_company_name} Data")
 
-        # TODO: Add your resume generation logic here
+            # Re-enable button
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate Resume")
+
+            print("Resume generated successfully!")
+        except Exception as e:
+            self.on_ai_error(str(e))
+
+    def on_ai_error(self, error_msg):
+        """Handle AI request errors"""
+        print(f"Error: {error_msg}")
+
+        # Re-enable button
+        self.generate_button.setEnabled(True)
+        self.generate_button.setText("Generate Resume")
 
 
 if __name__ == "__main__":

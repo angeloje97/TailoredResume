@@ -81,6 +81,20 @@ def save_json_obj(obj, file_name):
     with open(full_path, 'w', encoding='utf-8') as file:
         json.dump(obj, file, indent=4, ensure_ascii=False)
 
+def expand_list_to_keys(obj, seperator=""):
+    result = {}
+
+    for key, value in obj.items():
+        if not isinstance(value, list):
+            result[key] = value
+            continue
+
+        for i, item in enumerate(value, start = 1):
+            result[f"{key}{seperator}{i}"] = item
+
+        
+    return result
+
 def ensure_path_exists(path):
     folder_path = Path(path)
     folder_path.mkdir(exist_ok=True)

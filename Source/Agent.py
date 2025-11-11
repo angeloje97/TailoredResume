@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from pathlib import Path
 from icecream import ic
@@ -9,8 +9,8 @@ import os
 env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-# Create OpenAI client
-client = OpenAI()
+# Create async OpenAI client
+client = AsyncOpenAI()
 
 model = "gpt-5"
 role = "user"
@@ -18,11 +18,11 @@ role = "user"
 # Extract the main message content
 
 
-def create_request(message):
+async def create_request(message):
     global model
     global role
 
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
         model=model,
         messages=[
             {"role": role, "content": message}
