@@ -31,33 +31,44 @@ This is a Python desktop application for tailoring resumes using AI. It features
 ### Core Modules
 
 **Main.py** - PySide6 desktop application with two-page interface:
+- **AIWorker class**: QThread worker for async AI requests without blocking UI
+  - Creates separate event loop for async operations
+  - Emits `finished` signal with response or `error` signal on failure
+  - Keeps GUI responsive during API calls
 - **ResumeApp class**: Main window with sidebar navigation
 - **Resume generation page**: Input fields for company name, job title, and job description
 - **Files/history page**: Placeholder for viewing generated resumes
 - **UI Framework**: Uses QStackedWidget for page switching, custom styled widgets
-- **Generate button handler**: `on_generate()` collects inputs and prepares AI prompt (incomplete implementation at line 241)
-- **Dependencies**: Imports `json_template` and `full_base_resume_text` from Utility, `create_request` from Agent
+- **Generate button handler**: `on_generate()` creates AIWorker thread, disables button during processing
+- **Response handlers**: `on_ai_response()` processes JSON, saves data, generates resume; `on_ai_error()` handles errors
+- **Dependencies**: Imports `json_template`, `full_base_resume_text`, `save_json_obj`, `expand_list_to_keys` from Utility, `create_request` from Agent
 
 **Utility.py** - Central utility module with document processing:
-- **Path configuration**: Uses `pathlib` with centralized `paths` dictionary
+- **Path configuration**: Uses `pathlib` with centralized `paths` dictionary including `json_data` folder
 - **Global state management**:
   - `base_resumes` - List of Path objects for all base resume .docx files
   - `base_resume_texts` - List of extracted text from each resume
   - `full_base_resume_text` - Concatenated text from all resumes (used for AI prompts)
   - `json_template` - Loaded JSON template dict
   - `resume_template` - Path to Resume Template.docx
-- **Document scanning**: `get_base_resumes()` finds all .docx files in BaseResumes/ (filters out `~$` temp files)
-- **Text extraction**: `get_docx_text(docx_path)` extracts text from paragraphs, tables, headers, and footers
-- **Template loading**: `get_templates()` loads JSON and .docx templates from Resources/
-- **Key transformation**: `replace_keys(dict_obj, modifier)` applies lambda functions to dictionary keys
+- **Document scanning**: `scan_docx(docx_path, modifier)` - Read-only iteration with callback, returns Document
+- **Document modification**: `modify_docx(docx_path, modifier)` - Transforms text in paragraphs, tables, headers, footers
+- **Text extraction**: `get_docx_text(docx_path)` uses `scan_docx` to collect text into list
+- **Template filling**: `write_to_docx(template_path, data)` fills placeholders and returns Document
+- **String replacement**: `fill_template(template_string, data)` replaces `{key}` placeholders with values
+- **Data transformation**: `expand_list_to_keys(obj, separator)` converts list values to numbered keys
+- **JSON operations**: `save_json_obj()` saves to json_data folder, `get_json_datas()` loads all JSON files
+- **Resume saving**: `save_resume(doc, name)` saves Document to Results folder
+- **Key transformation**: `replace_keys(dict_obj, modifier, ignore_keys)` applies lambda to dictionary keys
 - **Auto-execution**: Runs initialization code on module import (populates all globals)
 
-**Agent.py** - OpenAI API integration:
+**Agent.py** - Async OpenAI API integration:
 - **Environment setup**: Loads `.env` file from project root for API keys
-- **Client initialization**: Creates OpenAI client instance
-- **Model configuration**: Uses `gpt-5` model (configurable via `model` variable)
-- **Request function**: `create_request(message)` sends message to OpenAI and returns response content
+- **Client initialization**: Creates `AsyncOpenAI()` client instance for async operations
+- **Model configuration**: Uses `gpt-5` model (configurable via `model` variable at line 15)
+- **Async request function**: `async def create_request(message)` sends message to OpenAI with `await`
 - **Single-turn conversations**: Each request is stateless (no conversation history)
+- **Threading requirement**: Must be called from QThread worker (AIWorker) to avoid blocking GUI
 
 ### Path Configuration
 
@@ -68,7 +79,8 @@ base_dir = Path(__file__).parent.parent
 paths = {
     "base_resume": base_dir / "BaseResumes",
     "resources": base_dir / "Resources",
-    "results": base_dir / "Results"
+    "results": base_dir / "Results",
+    "json_data": base_dir / "Resources" / "Json Data"
 }
 ```
 
@@ -77,19 +89,28 @@ paths = {
 1. **Module Import**: When any module imports Utility.py:
    - All base resumes are scanned and loaded
    - Text is extracted from all resumes and concatenated into `full_base_resume_text`
-   - Template files are loaded into memory
+   - Template files (JSON and .docx) are loaded into memory
    - Global state is initialized
+   - Ensures all required folders exist
 
 2. **GUI Initialization**: When Main.py runs:
    - PySide6 application window is created with sidebar navigation
    - User inputs company name, job title, and job description
    - On "Generate" button click, `on_generate()` is triggered
 
-3. **Resume Generation** (incomplete implementation):
-   - Prompt is constructed with base resume text and job description
-   - `create_request()` from Agent.py is called to get AI response
-   - Response should be parsed and used to populate `json_template`
-   - Final .docx should be generated using `resume_template`
+3. **Async Resume Generation** (complete pipeline):
+   - **UI Thread**: Button disabled, text changes to "Generating..."
+   - **Worker Thread**: AIWorker created with AI prompt
+   - **API Call**: Async request sent to OpenAI with base resume text + job details
+   - **Response Handling**:
+     - JSON response parsed from AI
+     - Lists expanded to numbered keys via `expand_list_to_keys()`
+     - JSON saved to `Resources/Json Data/` folder
+   - **Document Generation**:
+     - Template loaded from `Resources/Resume Template.docx`
+     - Placeholders filled via `write_to_docx()` → `modify_docx()` → `fill_template()`
+     - Final resume saved to `Results/` folder
+   - **UI Update**: Button re-enabled, success/error message displayed
 
 ### Template System
 
@@ -103,25 +124,61 @@ Structure for resume sections that can be populated:
 **Resume Template** (Resources/Resume Template.docx):
 Base .docx file with placeholder formatting to be filled with JSON data
 
-### Key Functions
+### Document Processing Pattern
 
-**get_base_resumes()** - Scans BaseResumes/ folder:
+The codebase uses a clean separation between reading and modifying documents:
+
+**scan_docx(docx_path, modifier)** - Read-only document iteration:
 ```python
-base_resumes = [f for f in folder.glob("*.docx") if not f.name.startswith("~$")]
+def scan_docx(docx_path, modifier) -> Document:
+    # Calls modifier(text) for each text element
+    # Returns document unchanged (for chaining)
 ```
 
-**get_docx_text(docx_path)** - Extracts all text from .docx:
-- Returns list of strings from paragraphs and table cells
-- Use `'\n'.join(result)` to get single string
+**modify_docx(docx_path, modifier) -> Document** - Document transformation:
+```python
+def modify_docx(docx_path, modifier) -> Document:
+    # For each text element: element.text = modifier(element.text)
+    # Returns modified document
+```
 
-**get_templates()** - Loads template files:
-- Loads JSON template into `json_template` global
-- Sets `resume_template` path
+Both iterate over: paragraphs, table cells, headers, footers.
 
-**replace_keys(dict_obj, modifier)** - Transform dictionary keys:
+### Key Functions
+
+**expand_list_to_keys(obj, separator)** - Convert lists to numbered keys:
+```python
+# Input:  {"details": [1, 2, 3], "name": "John"}
+# Output: {"details 1": 1, "details 2": 2, "details 3": 3, "name": "John"}
+expand_list_to_keys(data, " ")
+```
+
+**write_to_docx(template_path, data) -> Document** - Fill template with data:
+```python
+# Wraps keys in {braces}, replaces placeholders, returns Document
+doc = write_to_docx(template_path, {"Name": "John", "Title": "Engineer"})
+```
+
+**fill_template(template_string, data) -> str** - String replacement:
+```python
+# Replaces all occurrences of keys with values
+result = fill_template("Hello {Name}", {"{Name}": "John"})  # "Hello John"
+```
+
+**save_resume(doc, name)** - Save Document to Results/:
+```python
+save_resume(doc, "Google_Resume")  # Saves to Results/Google_Resume.docx
+```
+
+**get_json_datas()** - Load all JSON files from json_data folder:
+```python
+json_list = get_json_datas()  # Returns list of parsed JSON objects
+```
+
+**replace_keys(dict_obj, modifier, ignore_keys)** - Transform dictionary keys:
 ```python
 # Example: Wrap keys in curly braces
-result = replace_keys(data, lambda s: f"{{{s}}}")
+result = replace_keys(data, lambda s: f"{{{s}}}", ignore_keys=["special"])
 ```
 
 ## Development
@@ -176,17 +233,42 @@ full_text = '\n'.join(text_list)
 
 ### Working with AI Integration
 
-**Making OpenAI API requests**:
+**Making async OpenAI API requests**:
+
+Agent.py uses `AsyncOpenAI` and must be called from a QThread worker:
+
 ```python
+import asyncio
 from Source.Agent import create_request
 
-# Send a message and get response
-response = create_request("Your prompt here")
+# Must run in async context (like AIWorker.run())
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+response = loop.run_until_complete(create_request("Your prompt here"))
+loop.close()
+```
+
+**Using AIWorker (recommended)**:
+```python
+# Create worker thread
+worker = AIWorker(message)
+worker.finished.connect(on_response_callback)
+worker.error.connect(on_error_callback)
+worker.start()
+
+def on_response_callback(response_text):
+    # Handle response in main GUI thread
+    pass
 ```
 
 **Current model**: Set to `gpt-5` in Agent.py (line 15). Modify `model` variable to change.
 
 **API configuration**: Requires `OPENAI_API_KEY` in `.env` file at project root.
+
+**Why async + QThread**:
+- `AsyncOpenAI` provides better performance and connection pooling
+- QThread keeps GUI responsive during API calls
+- Signals/slots enable thread-safe communication
 
 ### GUI Development
 
@@ -201,10 +283,35 @@ response = create_request("Your prompt here")
 2. Add to stacked widget with `self.stacked_widget.addWidget(page)`
 3. Create sidebar button that calls `setCurrentIndex()` with page index
 
-### Known Issues & Incomplete Features
+### Common Patterns
 
-**Main.py line 241**: The `on_generate()` method has incomplete implementation - the message string is cut off and needs completion.
+**Complete resume generation workflow**:
+```python
+# 1. Get AI response (in worker thread)
+response = await create_request(prompt)
 
-**Resume generation pipeline**: Flow from AI response → JSON population → .docx generation is not yet implemented.
+# 2. Parse and transform JSON
+data = json.loads(response)
+expanded_data = expand_list_to_keys(data, " ")
 
-**Files/history page**: Currently placeholder with no functionality implemented.
+# 3. Save JSON for later reference
+save_json_obj(expanded_data, f"{company_name} Data")
+
+# 4. Fill template and save resume
+doc = write_to_docx(resume_template, expanded_data)
+save_resume(doc, f"{company_name} Resume")
+```
+
+**Working with document templates**:
+```python
+# Template should have placeholders like: {Name}, {Job 1}, {Job 2}
+# Data should be flat dict (no nested lists after expand_list_to_keys)
+data = {
+    "Name": "John Doe",
+    "Job 1": "Software Engineer",
+    "Job 2": "Senior Developer"
+}
+
+doc = write_to_docx(template_path, data)
+save_resume(doc, "output_name")
+```

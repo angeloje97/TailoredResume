@@ -1,29 +1,37 @@
 {
+    "Meta": {
+        "File Name": "{Company Name} Resume",
+        "Company Name": "",
+        "Position Name": "",
+        "Date Created": "{Date in PST}",
+        "Note from ChatGPT": ""
+    },
+
     "Summary": "",
-    "Job 1 Title" : "Software Engineer - Company Name - (2023-2025)",
-    "J1 Details" : [
-        "Details 1",
-        "Details 2",
-        "Details 3",
-        "Details 4",
-        "Details 5",
-        "Details 6"
+    "Job1Title" : "Software Engineer - Company Name - (2023-2025)",
+    "J1Details" : [
+        "Details1",
+        "Details2",
+        "Details3",
+        "Details4",
+        "Details5",
+        "Details6"
     ],
-    "Job 2 Title": "Software Engineer - Company Name - (2022-2023)",
-    "J2 Details" : [
-        "Details 1",
-        "Details 2",
-        "Details 3"
+    "Job2Title": "Software Engineer - Company Name - (2022-2023)",
+    "J2Details" : [
+        "Details1",
+        "Details2",
+        "Details3"
     ],
-    "Technical Skills" : "",
-    "Personal Project 1" : "",
-    "P1 Details" : [
-        "Details 1",
-        "Details 2"
+    "TechnicalSkills" : "",
+    "PersonalProject1" : "{Project Name} - {Tech Stack}",
+    "P1Details" : [
+        "Details1",
+        "Details2"
     ],
-    "Personal Project 2": "",
-    "P2 Details": [
-        "Details 1",
-        "Details 2"
+    "PersonalProject2": "{Project Name} - {Tech Stack}",
+    "P2Details": [
+        "Details1",
+        "Details2"
     ]
 } 

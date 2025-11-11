@@ -264,7 +264,9 @@ class ResumeApp(QMainWindow):
         message += f"Create a tailored resume for the following job description details\n"
         message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
         message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
-        message += f"Keep in mine that this will be a 1 page resume with 11 point font. Also 10 lines are reserved by headers or lines. There are 32 free lines to write in"
+        message += f"Keep in mine that this will be a 1 page resume with 11 point font. Also 10 lines are reserved by headers or lines. There are 32 free lines to write in."
+        message += f"Each line stores roughly 93 characters. So use that knowledge to balance out if you want each entry to take up 1 or 2 lines."
+        message += "Try to make it a full page or almost a full page."
 
         # Store company name for use in callback
         self.current_company_name = company_name
@@ -279,7 +281,7 @@ class ResumeApp(QMainWindow):
         """Handle successful AI response"""
         try:
             data = json.loads(response)
-            save_json_obj(expand_list_to_keys(data, " "), f"{self.current_company_name} Data")
+            save_json_obj(expand_list_to_keys(data, ""), f"{self.current_company_name} Data")
 
             # Re-enable button
             self.generate_button.setEnabled(True)

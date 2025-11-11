@@ -1,5 +1,6 @@
 *~$*
 *.docx
+*.pdf
 *.pyc
 *Junk
 .env

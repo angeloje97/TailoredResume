@@ -22,6 +22,10 @@ async def create_request(message):
     global model
     global role
 
+    # response = await client.responses.create(
+    #     model=model,
+    #     input=message
+    # )
     response = await client.chat.completions.create(
         model=model,
         messages=[
@@ -29,6 +33,6 @@ async def create_request(message):
         ]
     )
 
+    # message_content = response.output_text
     message_content = response.choices[0].message.content
-
     return message_content
