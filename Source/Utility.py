@@ -12,16 +12,19 @@ paths = {
     "base_resume": base_dir / "BaseResumes",
     "resources": base_dir / "Resources",
     "results": base_dir / "Results",
-    "json_data" : base_dir / "Resources" / "Json Data"
+    "json_data" : base_dir / "Resources" / "Json Data",
+    "temp": base_dir / "Temp"
 }
 
 base_resumes = []
 base_resume_texts = []
 full_base_resume_text = ""
+resume_prompt = ""
 
 
 json_template = {}
 resume_template = ""
+cover_letter_template = ""
 
 #endregion
 
@@ -108,12 +111,19 @@ def get_templates():
     global paths
     global resume_template
     global json_template
+    global cover_letter_template
+    global resume_prompt
 
+    prompt_path = paths['resources'] / "Resume Prompt.md"
     json_path = paths['resources'] / "Json Template.json"
     resume_template = paths['resources'] / "Resume Template.docx"
+    cover_letter_template = paths['resources'] / "Cover Letter Template.docx"
 
     with open(json_path, "r", encoding="utf-8") as file:
         json_template = json.load(file)
+    
+    with open(prompt_path, 'r', encoding="utf-8") as file:
+        resume_prompt = file.read()
 
 def get_json_datas():
     global paths
@@ -128,12 +138,29 @@ def get_json_datas():
 
     return json_datas
 
-def save_resume(doc: Document, name: str):
+def save_document_result(doc: Document, name: str):
     global paths
 
     full_path = paths["results"] / f'{name}.docx'
 
     doc.save(full_path)
+
+def save_document_temp(doc: Document, name: str):
+    global paths
+
+    ensure_path_exists(paths['temp'])
+
+    full_path = paths['temp'] / f'{name}.docx'
+
+    doc.save(full_path)
+
+def clear_temp():
+    global paths
+    temp_path = paths['temp']
+
+    for file in Path(temp_path).glob("*"):
+        if file.is_file():
+            file.unlink()
 
 def save_json_obj(obj, file_name):
     global paths

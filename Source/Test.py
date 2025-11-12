@@ -1,13 +1,21 @@
-from Utility import paths, write_to_docx, get_json_datas, expand_list_to_keys, replace_keys, resume_template, save_resume
+from Utility import paths, write_to_docx, get_json_datas, expand_list_to_keys, replace_keys, resume_template, cover_letter_template, save_document_result
 from icecream import ic
 
-json_datas = [expand_list_to_keys(item, " ") for item in get_json_datas()]
+json_datas = get_json_datas()
 
-for index, data in enumerate(json_datas):
-    new_doc = write_to_docx(resume_template, data)
+for data in json_datas:
+    resume_data = data['Resume']
     
-    if 'Meta' in data:
-        meta = data['Meta']
-        name = meta['File Name']
+    cover_letter_data = data['CoverLetter']
 
-        save_resume(new_doc, f"{name}")
+    resume_data = expand_list_to_keys(resume_data, "")
+
+    resume_doc = write_to_docx(resume_template, resume_data)
+
+    cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
+
+    resume_name = resume_data['File Name']
+    cover_letter_name = cover_letter_data['File Name']
+
+    save_document_result(resume_doc, resume_name)
+    save_document_result(cover_letter_doc, cover_letter_name)

@@ -5,7 +5,8 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QPushButton, QStackedWidget)
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon
-from Utility import json_template, full_base_resume_text, save_json_obj, expand_list_to_keys
+from Utility import json_template, full_base_resume_text,  resume_template, cover_letter_template, resume_prompt
+from Utility import save_json_obj, expand_list_to_keys, write_to_docx, save_document_result, clear_temp, save_document_temp
 from Agent import create_request
 import json
 
@@ -63,6 +64,8 @@ class ResumeApp(QMainWindow):
 
         # Create the files/history page
         self.create_files_page()
+
+    #region Pages
 
     def create_sidebar(self, parent_layout):
         """Create the left sidebar with navigation"""
@@ -248,6 +251,9 @@ class ResumeApp(QMainWindow):
         # Add page to stacked widget
         self.stacked_widget.addWidget(page)
 
+    #endregion
+
+
     def on_generate(self):
         """Handle the generate button click"""
         job_title = self.job_title.text()
@@ -259,14 +265,12 @@ class ResumeApp(QMainWindow):
         self.generate_button.setText("Generating...")
 
         # Build the AI prompt
-        message = "Using the following texts from a multitude of resumes\n"
-        message += full_base_resume_text + "\n"
-        message += f"Create a tailored resume for the following job description details\n"
+        message = f"My resumes:\n{full_base_resume_text}\n"
         message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
+        message += f"{resume_prompt}"
         message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
-        message += f"Keep in mine that this will be a 1 page resume with 11 point font. Also 10 lines are reserved by headers or lines. There are 32 free lines to write in."
-        message += f"Each line stores roughly 93 characters. So use that knowledge to balance out if you want each entry to take up 1 or 2 lines."
-        message += "Try to make it a full page or almost a full page."
+        message += "Also make sure to fillout the cover page"
+
 
         # Store company name for use in callback
         self.current_company_name = company_name
@@ -281,7 +285,31 @@ class ResumeApp(QMainWindow):
         """Handle successful AI response"""
         try:
             data = json.loads(response)
-            save_json_obj(expand_list_to_keys(data, ""), f"{self.current_company_name} Data")
+            
+            meta = data['Meta']
+
+            # clear_temp()
+
+            save_json_obj(expand_list_to_keys(data, ""), f"{meta['File Name']} Data")
+            #region Filling Documents
+            
+            resume_data = expand_list_to_keys(data['Resume'], "")
+            cover_letter_data = data['CoverLetter']
+
+            resume_doc = write_to_docx(resume_template, resume_data)
+            cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
+
+            resume_name = resume_data['File Name']
+            cover_letter_name = cover_letter_data['File Name']
+
+            save_document_result(resume_doc, resume_name)
+            save_document_result(cover_letter_doc, cover_letter_name)
+
+            save_document_temp(resume_doc, resume_name)
+            save_document_temp(cover_letter_doc, cover_letter_name)
+
+
+            #endregion
 
             # Re-enable button
             self.generate_button.setEnabled(True)

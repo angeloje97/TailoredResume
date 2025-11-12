@@ -1,15 +1,16 @@
 {
     "Meta": {
-        "File Name": "{Company Name} Resume",
+        "File Name": "{Company Name}",
         "Company Name": "",
         "Position Name": "",
         "Date Created": "{Date in PST}",
-        "Note from ChatGPT": ""
+        "Note from ChatGPT": []
     },
 
     "Resume": {
+        "File Name": "{Company Name} Resume",
         "Summary": "",
-        "Job1Title" : "Software Engineer - Company Name - (2023-2025)",
+        "Job1Title" : "Software Engineer - Company Name - (Jan 2023 - Jan 2025)",
         "J1Details" : [
             "Details1",
             "Details2",
@@ -18,7 +19,7 @@
             "Details5",
             "Details6"
         ],
-        "Job2Title": "Software Engineer - Company Name - (2022-2023)",
+        "Job2Title": "Software Engineer - Company Name - (Jan 2022 - Jan 2023)",
         "J2Details" : [
             "Details1",
             "Details2",
@@ -38,6 +39,7 @@
     },
 
     "CoverLetter" : {
+        "File Name" : "{Company Name} Cover Letter",
         "Date": "January 1st, 2025",
         "CompanyName": "",
         "Paragraph1": "",
