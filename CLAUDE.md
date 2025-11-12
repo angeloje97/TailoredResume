@@ -13,9 +13,13 @@ This is a Python desktop application for tailoring resumes using AI. It features
 ├── BaseResumes/     # Source resume templates (.docx files)
 │   └── Resume2025_*.docx  # Latest resume versions (D, M, 3 variants)
 ├── Resources/       # Supporting resources
+│   ├── Json Data/           # Saved JSON data from AI responses
 │   ├── Json Template.json   # Resume data structure template
-│   └── Resume Template.docx # Base formatting template
-├── Results/         # Generated tailored resumes (output directory)
+│   ├── Resume Template.docx # Base resume formatting template
+│   ├── Cover Letter Template.docx # Cover letter formatting template
+│   └── Resume Prompt.md     # AI prompt instructions for tailoring
+├── Results/         # Generated tailored resumes and cover letters (output directory)
+├── Temp/            # Temporary document storage during generation
 ├── Source/          # Python source code
 │   ├── Main.py      # PySide6 GUI application (entry point)
 │   ├── Utility.py   # Document processing utilities
@@ -41,16 +45,23 @@ This is a Python desktop application for tailoring resumes using AI. It features
 - **UI Framework**: Uses QStackedWidget for page switching, custom styled widgets
 - **Generate button handler**: `on_generate()` creates AIWorker thread, disables button during processing
 - **Response handlers**: `on_ai_response()` processes JSON, saves data, generates resume; `on_ai_error()` handles errors
-- **Dependencies**: Imports `json_template`, `full_base_resume_text`, `save_json_obj`, `expand_list_to_keys` from Utility, `create_request` from Agent
+- **Dependencies**: Imports `json_template`, `full_base_resume_text`, `resume_template`, `cover_letter_template`, `resume_prompt`, `save_json_obj`, `expand_list_to_keys`, `write_to_docx`, `save_document_result`, `save_document_temp`, `clear_temp` from Utility; `create_request` from Agent
 
 **Utility.py** - Central utility module with document processing:
-- **Path configuration**: Uses `pathlib` with centralized `paths` dictionary including `json_data` folder
+- **Path configuration**: Uses `pathlib` with centralized `paths` dictionary
+  - `base_resume` - BaseResumes folder
+  - `resources` - Resources folder
+  - `results` - Results folder (generated documents)
+  - `json_data` - Resources/Json Data folder (saved AI responses)
+  - `temp` - Temp folder (temporary document storage)
 - **Global state management**:
   - `base_resumes` - List of Path objects for all base resume .docx files
   - `base_resume_texts` - List of extracted text from each resume
   - `full_base_resume_text` - Concatenated text from all resumes (used for AI prompts)
   - `json_template` - Loaded JSON template dict
   - `resume_template` - Path to Resume Template.docx
+  - `cover_letter_template` - Path to Cover Letter Template.docx
+  - `resume_prompt` - Loaded resume prompt instructions from Resume Prompt.md
 - **Document scanning**: `scan_docx(docx_path, modifier)` - Read-only iteration with callback, returns Document
 - **Document modification**: `modify_docx(docx_path, modifier)` - Transforms text in paragraphs, tables, headers, footers
 - **Text extraction**: `get_docx_text(docx_path)` uses `scan_docx` to collect text into list
@@ -58,7 +69,8 @@ This is a Python desktop application for tailoring resumes using AI. It features
 - **String replacement**: `fill_template(template_string, data)` replaces `{key}` placeholders with values
 - **Data transformation**: `expand_list_to_keys(obj, separator)` converts list values to numbered keys
 - **JSON operations**: `save_json_obj()` saves to json_data folder, `get_json_datas()` loads all JSON files
-- **Resume saving**: `save_resume(doc, name)` saves Document to Results folder
+- **Document saving**: `save_document_result(doc, name)` saves Document to Results folder, `save_document_temp(doc, name)` saves to Temp folder
+- **Temp management**: `clear_temp()` deletes all files in Temp folder
 - **Key transformation**: `replace_keys(dict_obj, modifier, ignore_keys)` applies lambda to dictionary keys
 - **Auto-execution**: Runs initialization code on module import (populates all globals)
 
@@ -80,7 +92,8 @@ paths = {
     "base_resume": base_dir / "BaseResumes",
     "resources": base_dir / "Resources",
     "results": base_dir / "Results",
-    "json_data": base_dir / "Resources" / "Json Data"
+    "json_data": base_dir / "Resources" / "Json Data",
+    "temp": base_dir / "Temp"
 }
 ```
 
@@ -89,7 +102,7 @@ paths = {
 1. **Module Import**: When any module imports Utility.py:
    - All base resumes are scanned and loaded
    - Text is extracted from all resumes and concatenated into `full_base_resume_text`
-   - Template files (JSON and .docx) are loaded into memory
+   - Template files (JSON, .docx, and Resume Prompt.md) are loaded into memory
    - Global state is initialized
    - Ensures all required folders exist
 
@@ -98,31 +111,46 @@ paths = {
    - User inputs company name, job title, and job description
    - On "Generate" button click, `on_generate()` is triggered
 
-3. **Async Resume Generation** (complete pipeline):
+3. **Async Document Generation** (complete pipeline):
    - **UI Thread**: Button disabled, text changes to "Generating..."
-   - **Worker Thread**: AIWorker created with AI prompt
-   - **API Call**: Async request sent to OpenAI with base resume text + job details
+   - **Worker Thread**: AIWorker created with AI prompt combining:
+     - `full_base_resume_text` (all base resumes)
+     - User inputs (company name, job title, job description)
+     - `resume_prompt` (instructions from Resume Prompt.md)
+     - `json_template` structure for expected response format
+   - **API Call**: Async request sent to OpenAI (gpt-5 model)
    - **Response Handling**:
-     - JSON response parsed from AI
-     - Lists expanded to numbered keys via `expand_list_to_keys()`
-     - JSON saved to `Resources/Json Data/` folder
+     - JSON response parsed from AI containing `Meta`, `Resume`, and `CoverLetter` sections
+     - Lists in Resume section expanded to numbered keys via `expand_list_to_keys()`
+     - Full JSON saved to `Resources/Json Data/` folder for history
    - **Document Generation**:
-     - Template loaded from `Resources/Resume Template.docx`
-     - Placeholders filled via `write_to_docx()` → `modify_docx()` → `fill_template()`
-     - Final resume saved to `Results/` folder
-   - **UI Update**: Button re-enabled, success/error message displayed
+     - Resume data filled into `Resume Template.docx` via `write_to_docx()`
+     - Cover letter data filled into `Cover Letter Template.docx`
+     - Both documents saved to `Results/` folder (permanent storage)
+     - Both documents saved to `Temp/` folder (temporary workspace)
+   - **UI Update**: Button re-enabled, success message displayed
 
 ### Template System
 
 **JSON Template** (Resources/Json Template.json):
-Structure for resume sections that can be populated:
-- Summary
-- Job 1/2 Title and Details (arrays)
-- Technical Skills
-- Personal Project 1/2 and Details (arrays)
+Three-section structure for AI response:
+- **Meta**: File naming, company/position info, date, AI notes
+- **Resume**: Summary, 2 jobs with details (arrays), technical skills, 2 projects with details (arrays)
+- **CoverLetter**: Date, company name, 3 paragraphs
 
 **Resume Template** (Resources/Resume Template.docx):
-Base .docx file with placeholder formatting to be filled with JSON data
+Base .docx file with placeholder formatting (e.g., `{Summary}`, `{Job1Title}`, `{J1Details1}`)
+
+**Cover Letter Template** (Resources/Cover Letter Template.docx):
+Base .docx file with placeholders (e.g., `{CompanyName}`, `{Paragraph1}`)
+
+**Resume Prompt** (Resources/Resume Prompt.md):
+Detailed instructions for AI on how to tailor resumes:
+- Analyze job description for required skills and responsibilities
+- Tailor experience using job terminology
+- Preserve authenticity (no exaggeration, concrete numbers)
+- Format constraints (1 page, 32 lines, ~93 chars/line)
+- Structure priorities (summary, relevant jobs/projects only)
 
 ### Document Processing Pattern
 
@@ -165,9 +193,19 @@ doc = write_to_docx(template_path, {"Name": "John", "Title": "Engineer"})
 result = fill_template("Hello {Name}", {"{Name}": "John"})  # "Hello John"
 ```
 
-**save_resume(doc, name)** - Save Document to Results/:
+**save_document_result(doc, name)** - Save Document to Results/ (permanent storage):
 ```python
-save_resume(doc, "Google_Resume")  # Saves to Results/Google_Resume.docx
+save_document_result(doc, "Google_Resume")  # Saves to Results/Google_Resume.docx
+```
+
+**save_document_temp(doc, name)** - Save Document to Temp/ (temporary workspace):
+```python
+save_document_temp(doc, "Google_Resume")  # Saves to Temp/Google_Resume.docx
+```
+
+**clear_temp()** - Delete all files in Temp/ folder:
+```python
+clear_temp()  # Removes all temporary files
 ```
 
 **get_json_datas()** - Load all JSON files from json_data folder:
@@ -285,33 +323,69 @@ def on_response_callback(response_text):
 
 ### Common Patterns
 
-**Complete resume generation workflow**:
+**Complete document generation workflow** (resume + cover letter):
 ```python
 # 1. Get AI response (in worker thread)
 response = await create_request(prompt)
 
-# 2. Parse and transform JSON
-data = json.loads(response)
-expanded_data = expand_list_to_keys(data, " ")
+# 2. Parse JSON response
+data = json.loads(response)  # Contains Meta, Resume, CoverLetter sections
 
-# 3. Save JSON for later reference
-save_json_obj(expanded_data, f"{company_name} Data")
+# 3. Save complete JSON for history
+save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']} Data")
 
-# 4. Fill template and save resume
-doc = write_to_docx(resume_template, expanded_data)
-save_resume(doc, f"{company_name} Resume")
+# 4. Process resume section (expand arrays to numbered keys)
+resume_data = expand_list_to_keys(data['Resume'], "")
+resume_doc = write_to_docx(resume_template, resume_data)
+
+# 5. Process cover letter section (no array expansion needed)
+cover_letter_data = data['CoverLetter']
+cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
+
+# 6. Save both documents to Results/ and Temp/
+save_document_result(resume_doc, resume_data['File Name'])
+save_document_result(cover_letter_doc, cover_letter_data['File Name'])
+save_document_temp(resume_doc, resume_data['File Name'])
+save_document_temp(cover_letter_doc, cover_letter_data['File Name'])
 ```
 
 **Working with document templates**:
 ```python
-# Template should have placeholders like: {Name}, {Job 1}, {Job 2}
+# Template should have placeholders like: {Name}, {Job1Title}, {J1Details1}
 # Data should be flat dict (no nested lists after expand_list_to_keys)
 data = {
     "Name": "John Doe",
-    "Job 1": "Software Engineer",
-    "Job 2": "Senior Developer"
+    "Job1Title": "Software Engineer",
+    "J1Details1": "Built scalable systems"
 }
 
 doc = write_to_docx(template_path, data)
-save_resume(doc, "output_name")
+save_document_result(doc, "output_name")
+```
+
+**Understanding expand_list_to_keys behavior**:
+```python
+# IMPORTANT: separator="" means NO separator between key and number
+data = {"J1Details": ["Detail 1", "Detail 2"]}
+result = expand_list_to_keys(data, "")
+# Result: {"J1Details1": "Detail 1", "J1Details2": "Detail 2"}
+
+# If separator=" " was used:
+result = expand_list_to_keys(data, " ")
+# Result: {"J1Details 1": "Detail 1", "J1Details 2": "Detail 2"}
+```
+
+**AI Prompt Construction** (see Main.py on_generate() method):
+```python
+# Build comprehensive prompt for AI
+message = f"My resumes:\n{full_base_resume_text}\n"  # All base resume text
+message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
+message += f"{resume_prompt}"  # Instructions from Resume Prompt.md
+message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
+message += "Also make sure to fillout the cover page"
+
+# Send to AI via worker thread
+worker = AIWorker(message)
+worker.finished.connect(on_ai_response)
+worker.start()
 ```
