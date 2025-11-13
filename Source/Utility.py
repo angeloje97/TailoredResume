@@ -1,8 +1,10 @@
 from pathlib import Path
 from icecream import ic
 from docx import Document
+from docx2pdf import convert
 import json
-
+import shutil
+import os
 
 #region Global Variables
 
@@ -154,13 +156,46 @@ def save_document_temp(doc: Document, name: str):
 
     doc.save(full_path)
 
+def copy_files(path_a, path_b):
+    ensure_path_exists(path_a)
+    ensure_path_exists(path_b)
+
+    for file_name in os.listdir(path_a):
+        src_path = os.path.join(path_a, file_name)
+        dst_path = os.path.join(path_b, file_name)
+
+        if os.path.isfile(src_path):
+            shutil.copy2(src_path, dst_path)
+
+def copy_temp_to_results():
+    global paths
+
+    copy_files(paths['temp'], paths['results'])
+
 def clear_temp():
     global paths
     temp_path = paths['temp']
 
     for file in Path(temp_path).glob("*"):
-        if file.is_file():
-            file.unlink()
+        try:
+            if file.is_file():
+                file.unlink()
+        except Exception as e:
+            print(f"Could not remove {file.name}\n{e}")
+
+def convert_temp_to_pdf():
+    global paths
+    
+    path = paths['temp']
+
+    for file in os.listdir(path):
+        if not file.lower().endswith(".docx"):
+            continue
+
+        input_path = os.path.join(path, file)
+        output_path = os.path.join(path, file.replace(".docx", ".pdf"))
+        
+        convert(input_path, output_path)
 
 def save_json_obj(obj, file_name):
     global paths
@@ -244,3 +279,5 @@ get_resume_full_resume_text()
 #endregion
 
 get_json_datas()
+
+copy_temp_to_results()

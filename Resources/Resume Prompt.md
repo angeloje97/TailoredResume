@@ -19,10 +19,11 @@
      - Maintain first-person implied voice (no "the candidate")
 
   ## 4. FORMAT constraints:
-     - Target: 1 page resume (32 usable lines, ~93 characters per line)
+     - Target: 1 page resume (32 usable lines, ~85 characters per line)
      - Each bullet should be 1-2 lines maximum
      - Prioritize impact: fewer, stronger bullets over many weak ones
      - Include only 2 most relevant jobs and 2 most relevant projects
+     - If the arrays in the json template has x items in the array. Make sure you fill out x items minimum.
 
   ## 5. STRUCTURE priorities (in order):
      - Summary: 2-3 lines highlighting directly relevant experience

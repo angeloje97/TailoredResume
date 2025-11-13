@@ -5,9 +5,10 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QPushButton, QStackedWidget)
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon
-from Utility import json_template, full_base_resume_text,  resume_template, cover_letter_template, resume_prompt
-from Utility import save_json_obj, expand_list_to_keys, write_to_docx, save_document_result, clear_temp, save_document_temp
-from Agent import create_request
+from Utility import json_template, full_base_resume_text,  resume_template, cover_letter_template, resume_prompt, paths
+from Utility import save_json_obj, expand_list_to_keys, write_to_docx, clear_temp, save_document_temp, copy_temp_to_results, convert_temp_to_pdf
+from Agent import create_request, model
+from datetime import datetime
 import json
 
 
@@ -288,25 +289,36 @@ class ResumeApp(QMainWindow):
             
             meta = data['Meta']
 
+            clear_temp()
+            
+            resume_data = expand_list_to_keys(data['Resume'], "")
+            cover_letter_data = data['CoverLetter']
+
+            resume_name = resume_data['File Name']
+            cover_letter_name = cover_letter_data['File Name']
+            #region Editing Meta Data
+
+            data['Meta']['Resume Path'] = str(paths['results'] / f"{resume_name}.docx")
+            data['Meta']['Cover Letter Path'] = str(paths['results'] / f"{cover_letter_name}.docx")
+            data['Meta']['Model Used'] = model
+            data['Meta']['Date Created'] = datetime.now().strftime("%B %d, %Y %I:%M %p")
+            #endregion
+
             # clear_temp()
 
             save_json_obj(expand_list_to_keys(data, ""), f"{meta['File Name']} Data")
             #region Filling Documents
             
-            resume_data = expand_list_to_keys(data['Resume'], "")
-            cover_letter_data = data['CoverLetter']
 
             resume_doc = write_to_docx(resume_template, resume_data)
             cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
 
-            resume_name = resume_data['File Name']
-            cover_letter_name = cover_letter_data['File Name']
-
-            save_document_result(resume_doc, resume_name)
-            save_document_result(cover_letter_doc, cover_letter_name)
-
             save_document_temp(resume_doc, resume_name)
             save_document_temp(cover_letter_doc, cover_letter_name)
+
+            convert_temp_to_pdf()
+
+            copy_temp_to_results()
 
 
             #endregion

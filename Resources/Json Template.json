@@ -10,7 +10,7 @@
     "Resume": {
         "File Name": "{Company Name} Resume",
         "Summary": "",
-        "Job1Title" : "Software Engineer - Company Name - (Jan 2023 - Jan 2025)",
+        "Job1Title" : "Software Engineer - Company Name | Jan 2023 - Jan 2025",
         "J1Details" : [
             "Details1",
             "Details2",
@@ -19,13 +19,19 @@
             "Details5",
             "Details6"
         ],
-        "Job2Title": "Software Engineer - Company Name - (Jan 2022 - Jan 2023)",
+        "Job2Title": "Software Engineer - Company Name | Jan 2022 - Jan 2023",
         "J2Details" : [
             "Details1",
             "Details2",
             "Details3"
         ],
-        "TechnicalSkills" : "",
+        "TechnicalSkillsCategory1" : "",
+        "TechnicalSkillsCategory1List" : "",
+        "TechnicalSkillsCategory2" : "",
+        "TechnicalSkillsCategory2List" : "",
+        "TechnicalSkillsCategory3" : "",
+        "TechnicalSkillsCategory3List" : "",
+        "Certifications": "",
         "PersonalProject1" : "{Project Name} - {Tech Stack}",
         "P1Details" : [
             "Details1",
