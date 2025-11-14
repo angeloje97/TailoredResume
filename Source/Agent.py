@@ -12,7 +12,7 @@ load_dotenv(dotenv_path=env_path)
 # Create async OpenAI client
 client = AsyncOpenAI()
 
-model = "gpt-5"
+model = "gpt-5.1"
 role = "user"
 
 # Extract the main message content

@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 from Utility import json_template, full_base_resume_text,  resume_template, cover_letter_template, resume_prompt, paths
-from Utility import save_json_obj, expand_list_to_keys, write_to_docx, clear_temp, save_document_temp, copy_temp_to_results, convert_temp_to_pdf
+from Utility import save_json_obj, expand_list_to_keys, write_to_docx, clear_temp, save_document_temp, copy_temp_to_results, convert_temp_to_pdf, get_templates
 from Agent import create_request, model
 from datetime import datetime
 import json
@@ -265,12 +265,19 @@ class ResumeApp(QMainWindow):
         self.generate_button.setEnabled(False)
         self.generate_button.setText("Generating...")
 
+        # Reload templates and prompts
+        get_templates()
+        from Utility import resume_prompt, json_template, full_base_resume_text
+
+        current_date_time = datetime.now().strftime("%B %d, %Y %I:%M %p")
+        
+
         # Build the AI prompt
         message = f"My resumes:\n{full_base_resume_text}\n"
         message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
         message += f"{resume_prompt}"
         message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
-        message += "Also make sure to fillout the cover page"
+        message += f"Also make sure to fillout the cover page. The time this request was made is {current_date_time}"
 
 
         # Store company name for use in callback
@@ -301,7 +308,6 @@ class ResumeApp(QMainWindow):
             data['Meta']['Resume Path'] = str(paths['results'] / f"{resume_name}.docx")
             data['Meta']['Cover Letter Path'] = str(paths['results'] / f"{cover_letter_name}.docx")
             data['Meta']['Model Used'] = model
-            data['Meta']['Date Created'] = datetime.now().strftime("%B %d, %Y %I:%M %p")
             #endregion
 
             # clear_temp()

@@ -12,18 +12,18 @@
         "Summary": "",
         "Job1Title" : "Software Engineer - Company Name | Jan 2023 - Jan 2025",
         "J1Details" : [
-            "Details1",
-            "Details2",
-            "Details3",
-            "Details4",
-            "Details5",
-            "Details6"
+            "Details1 (>93 Characters)",
+            "Details2 (>93 Characters)",
+            "Details3 (<90 Characters)",
+            "Details4 (<90 Characters)",
+            "Details5 (<90 Characters)",
+            "Details6 (<90 Characters)"
         ],
         "Job2Title": "Software Engineer - Company Name | Jan 2022 - Jan 2023",
         "J2Details" : [
-            "Details1",
-            "Details2",
-            "Details3"
+            "Details1 (>93 Characters)",
+            "Details2 (<90 Characters)",
+            "Details3 (<90 Characters)"
         ],
         "TechnicalSkillsCategory1" : "",
         "TechnicalSkillsCategory1List" : "",
@@ -34,13 +34,13 @@
         "Certifications": "",
         "PersonalProject1" : "{Project Name} - {Tech Stack}",
         "P1Details" : [
-            "Details1",
-            "Details2"
+            "Details1 (>93 Characters)",
+            "Details2 (<90 Characters)"
         ],
         "PersonalProject2": "{Project Name} - {Tech Stack}",
         "P2Details": [
-            "Details1",
-            "Details2"
+            "Details1 (<90 Characters)",
+            "Details2 (<90 Characters)"
         ]
     },
 
