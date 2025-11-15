@@ -10,6 +10,7 @@
      - Prioritizing experiences that directly relate to their requirements
      - KEEPING my authentic voice and specific metrics/accomplishments
      - Avoiding generic AI phrases like "spearheaded," "leveraged," "synergized"
+     - Feel free to rewrite the experience job position title with any way you see fit.
 
   ## 3. PRESERVE authenticity:
      - Use concrete numbers and specific technologies from my actual experience

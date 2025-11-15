@@ -10,8 +10,8 @@
         "Summary": "(240 - 335 Characters Including Spaces)",
         "Job1Title" : "{Title} - {Company} | Jan 2023 - Jan 2025",
         "J1Details" : [
-            "Details1 (>93 Characters)",
-            "Details2 (>93 Characters)",
+            "Details1 (~93-210 Characters)",
+            "Details2 (~93-210 Characters)",
             "Details3 (<90 Characters)",
             "Details4 (<90 Characters)",
             "Details5 (<90 Characters)",
@@ -19,7 +19,7 @@
         ],
         "Job2Title": "{Title} - {Company} | Jan 2022 - Jan 2023",
         "J2Details" : [
-            "Details1 (>93 Characters)",
+            "Details1 (~93-210 Characters)",
             "Details2 (<90 Characters)",
             "Details3 (<90 Characters)"
         ],
@@ -32,7 +32,7 @@
         "Certifications": "",
         "PersonalProject1" : "{Project Name} - {Tech Stack}",
         "P1Details" : [
-            "Details1 (>93 Characters)",
+            "Details1 (~93-210 Characters)",
             "Details2 (<90 Characters)"
         ],
         "PersonalProject2": "{Project Name} - {Tech Stack}",
@@ -56,7 +56,9 @@
         "Position Title": "",
         "Salary" : "{$USD | 'Equity' | 'Not Provided'}",
         "Description" : "2-3 Sentences explaining the position and company.",
-        "Tech Stack": ["C#", ".Net", "Typescript"],
+        "Tech Stack": ["C#", ".Net", "Typescript", "...Max Top 10"],
+        "Job Quality" : "A number on a scale from 1 to 10 on how good the job sounds in terms of work life balance, learning opportunity, work culture, red/green flags in the job description, and how well the things I learn from this job will transfer over to other better jobs.",
+        "Job Quality Description": "Explanation of why the job quality was given that rating.",
         "Company Size": "",
         "Responsibilities": [],
         "Motive": "Reason why I should be interested in this job opportunity in first person or my point of view.",

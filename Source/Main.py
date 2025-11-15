@@ -295,9 +295,9 @@ class ResumeApp(QMainWindow):
         from Utility import get_json_datas
 
         count = len(get_json_datas())
-        title_label = QLabel(f"History ({count} Results)")
-        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
-        page_layout.addWidget(title_label)
+        self.history_title_label = QLabel(f"History ({count} Results)")
+        self.history_title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
+        page_layout.addWidget(self.history_title_label)
 
         # Search bar
         self.search_bar = QLineEdit()
@@ -342,8 +342,8 @@ class ResumeApp(QMainWindow):
         from Utility import get_json_datas
 
         # Clear existing history items (keep the title and search bar)
-        while self.files_layout.count() > 2:
-            item = self.files_layout.takeAt(2)
+        while self.files_layout.count() > 0:
+            item = self.files_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
@@ -351,14 +351,21 @@ class ResumeApp(QMainWindow):
         datas = get_json_datas()
         datas = sorted(datas, key=lambda data: data['Meta']['Date Created'], reverse=True)
 
+        # Update title with current count
+        self.history_title_label.setText(f"History ({len(datas)} Results)")
+
         # Store history items with their data for filtering
         self.history_items = []
+        self.history_widgets = []  # Track all widget instances for expansion management
 
         # Add history items
         for data in datas:
             job_data = data['Job']
             history_item = self.create_history_item(job_data)
             self.files_layout.addWidget(history_item)
+
+            # Store widget reference
+            self.history_widgets.append(history_item)
 
             # Store item with its searchable data
             self.history_items.append({
@@ -390,9 +397,21 @@ class ResumeApp(QMainWindow):
             else:
                 item_data['widget'].setVisible(False)
 
+    def collapse_all_history_items(self, except_widget=None):
+        """Collapse all history items except the specified one"""
+        for widget in self.history_widgets:
+            if widget != except_widget and hasattr(widget, 'is_expanded'):
+                widget.is_expanded = False
+                if hasattr(widget, 'details_widget'):
+                    widget.details_widget.setVisible(False)
+
+    #region History Item
+
     def create_history_item(self, job_data):
         """Create a history item widget"""
         # Destructure job data
+
+        #region Main History Item
         position = job_data['Position Title']
         company = job_data['Company Name']
         start_date = job_data['Date Applied']
@@ -414,10 +433,14 @@ class ResumeApp(QMainWindow):
                 background-color: #fafafa;
             }
         """)
+        item_widget.setCursor(Qt.CursorShape.PointingHandCursor)
 
         item_layout = QVBoxLayout(item_widget)
         item_layout.setSpacing(12)
         item_layout.setContentsMargins(20, 16, 20, 16)
+
+        # Store expanded state
+        item_widget.is_expanded = False
 
         # Header with position, company, salary, match rating, and date
         header_layout = QHBoxLayout()
@@ -570,7 +593,151 @@ class ResumeApp(QMainWindow):
             tags_layout.addStretch()
             item_layout.addLayout(tags_layout)
 
+        #endregion
+
+        #region Expandable details
+
+        # Expandable details section (initially hidden)
+
+        description = job_data['Description']
+        responsibilities = "\n".join(job_data['Responsibilities'])
+        company_size = job_data['Company Size']
+        job_quality_value = int(job_data.get('Job Quality', 5))  # Default to 5 if not provided
+        job_quality_description = job_data.get('Job Quality Description', "NA")
+        motive = job_data.get("Motive", "NA")
+
+        details_widget = QWidget()
+        details_widget.setVisible(False)
+        details_layout = QVBoxLayout(details_widget)
+        details_layout.setSpacing(10)
+        details_layout.setContentsMargins(0, 10, 0, 0)
+
+        # Prevent mouse events from propagating to parent
+        details_widget.mousePressEvent = lambda e: e.accept()
+
+        # Job Description
+        job_desc_label = QLabel("Description:")
+        job_desc_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50;")
+        job_desc_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details_layout.addWidget(job_desc_label)
+
+        job_desc_text = QLabel(f"{description}")
+        job_desc_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
+        job_desc_text.setWordWrap(True)
+        job_desc_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details_layout.addWidget(job_desc_text)
+
+        # Responsibilities
+        responsibilities_label = QLabel("Responsibilities:")
+        responsibilities_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50; margin-top: 10px;")
+        responsibilities_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details_layout.addWidget(responsibilities_label)
+
+        responsibilities_text = QLabel(f"{responsibilities}")
+        responsibilities_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
+        responsibilities_text.setWordWrap(True)
+        responsibilities_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details_layout.addWidget(responsibilities_text)
+
+        # Company Size (horizontal layout)
+        company_size_layout = QHBoxLayout()
+        company_size_layout.setSpacing(10)
+        company_size_layout.setContentsMargins(0, 10, 0, 0)
+
+        company_size_label = QLabel("Company Size:")
+        company_size_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50;")
+        company_size_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        company_size_layout.addWidget(company_size_label)
+
+        company_size_text = QLabel(f"{company_size}")
+        company_size_text.setStyleSheet("font-size: 10pt; color: #555;")
+        company_size_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        company_size_layout.addWidget(company_size_text)
+
+        company_size_layout.addStretch()
+        details_layout.addLayout(company_size_layout)
+
+        # Job Quality (horizontal layout with colored tag)
+        job_quality_layout = QHBoxLayout()
+        job_quality_layout.setSpacing(10)
+        job_quality_layout.setContentsMargins(0, 10, 0, 0)
+
+        job_quality_label = QLabel("Job Quality:")
+        job_quality_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50;")
+        job_quality_layout.addWidget(job_quality_label)
+
+        # Get job quality value and determine color
+
+        # Determine color based on numeric quality value (1-10)
+        if job_quality_value >= 8:
+            quality_color = "#4CAF50"  # Green (8-10)
+            quality_bg = "#e8f5e9"
+        elif job_quality_value >= 5:
+            quality_color = "#FF9800"  # Orange (5-7)
+            quality_bg = "#fff3e0"
+        else:
+            quality_color = "#f44336"  # Red (1-4)
+            quality_bg = "#ffebee"
+
+        job_quality_tag = QLabel(f"{job_quality_value}/10")
+        job_quality_tag.setStyleSheet(f"""
+            font-size: 10pt;
+            color: {quality_color};
+            font-weight: 600;
+            background-color: {quality_bg};
+            padding: 4px 12px;
+            border-radius: 12px;
+        """)
+        job_quality_layout.addWidget(job_quality_tag)
+
+        job_quality_layout.addStretch()
+        details_layout.addLayout(job_quality_layout)
+
+        # Job Quality Description
+        job_quality_desc_label = QLabel("Job Quality Description:")
+        job_quality_desc_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50; margin-top: 10px;")
+        job_quality_desc_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details_layout.addWidget(job_quality_desc_label)
+
+        job_quality_desc_text = QLabel(f"{job_quality_description}")
+        job_quality_desc_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
+        job_quality_desc_text.setWordWrap(True)
+        job_quality_desc_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details_layout.addWidget(job_quality_desc_text)
+
+        # Motive
+        motive_label = QLabel("Why Work Here:")
+        motive_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50; margin-top: 10px;")
+        motive_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details_layout.addWidget(motive_label)
+
+        motive_text = QLabel(f"{motive}")
+        motive_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
+        motive_text.setWordWrap(True)
+        motive_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        details_layout.addWidget(motive_text)
+
+        item_layout.addWidget(details_widget)
+
+        # Store reference to details widget for toggling
+        item_widget.details_widget = details_widget
+
+        # Add click event to toggle expansion
+        def toggle_expand(event):
+            # Collapse all other items first
+            self.collapse_all_history_items(except_widget=item_widget)
+
+            # Toggle this item
+            item_widget.is_expanded = not item_widget.is_expanded
+            details_widget.setVisible(item_widget.is_expanded)
+
+        item_widget.mousePressEvent = toggle_expand
+
         return item_widget
+        
+        #endregion
+
+    #endregion
 
     #endregion
 
@@ -685,7 +852,8 @@ class ResumeApp(QMainWindow):
 
             # clear_temp()
 
-            save_json_obj(expand_list_to_keys(data, ""), f"{meta['File Name']} Data")
+            job = data['Job']
+            save_json_obj(expand_list_to_keys(data, ""), f"{job['Position Title']} {job['Company Name']}")
             #region Filling Documents
             
 
