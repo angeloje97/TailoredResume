@@ -2,7 +2,7 @@ import sys
 import asyncio
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QLineEdit, QTextEdit,
-                               QPushButton, QStackedWidget)
+                               QPushButton, QStackedWidget, QScrollArea)
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 from Utility import json_template, full_base_resume_text,  resume_template, cover_letter_template, resume_prompt, paths
@@ -44,7 +44,7 @@ class ResumeApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Resume Tailor")
-        self.setGeometry(100, 100, 1000, 600)
+        self.setGeometry(100, 100, 1400, 650)
 
         # Create central widget and horizontal layout for sidebar + content
         central_widget = QWidget()
@@ -65,6 +65,12 @@ class ResumeApp(QMainWindow):
 
         # Create the files/history page
         self.create_files_page()
+
+        # Create the statistics page
+        self.create_statistics_page()
+
+        # Create the settings page
+        self.create_settings_page()
 
     #region Pages
 
@@ -125,11 +131,57 @@ class ResumeApp(QMainWindow):
                 background-color: #45a049;
             }
         """)
-        self.files_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
+        self.files_btn.clicked.connect(self.show_files_page)
         sidebar_layout.addWidget(self.files_btn)
 
-        # Add stretch to push buttons to top
+        # Statistics button
+        self.stats_btn = QPushButton("📊")
+        self.stats_btn.setFixedSize(80, 80)
+        self.stats_btn.setToolTip("Statistics")
+        self.stats_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #34495e;
+                color: white;
+                font-size: 32pt;
+                border: none;
+                border-left: 4px solid #2c3e50;
+            }
+            QPushButton:hover {
+                background-color: #4CAF50;
+                border-left: 4px solid #4CAF50;
+            }
+            QPushButton:pressed {
+                background-color: #45a049;
+            }
+        """)
+        self.stats_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
+        sidebar_layout.addWidget(self.stats_btn)
+
+        # Add stretch to push settings button to bottom
         sidebar_layout.addStretch()
+
+        # Settings button
+        self.settings_btn = QPushButton("⚙️")
+        self.settings_btn.setFixedSize(80, 80)
+        self.settings_btn.setToolTip("Settings")
+        self.settings_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #34495e;
+                color: white;
+                font-size: 32pt;
+                border: none;
+                border-left: 4px solid #2c3e50;
+            }
+            QPushButton:hover {
+                background-color: #4CAF50;
+                border-left: 4px solid #4CAF50;
+            }
+            QPushButton:pressed {
+                background-color: #45a049;
+            }
+        """)
+        self.settings_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
+        sidebar_layout.addWidget(self.settings_btn)
 
         parent_layout.addWidget(sidebar)
 
@@ -229,20 +281,336 @@ class ResumeApp(QMainWindow):
         # Add page to stacked widget
         self.stacked_widget.addWidget(page)
 
+    #region History Page
+
     def create_files_page(self):
-        """Create the files/history page"""
+        """Create the files/history page container"""
+        # Main page container
+        self.files_page = QWidget()
+        page_layout = QVBoxLayout(self.files_page)
+        page_layout.setSpacing(0)
+        page_layout.setContentsMargins(20, 20, 20, 0)
+
+        # Title
+        from Utility import get_json_datas
+
+        count = len(get_json_datas())
+        title_label = QLabel(f"History ({count} Results)")
+        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
+        page_layout.addWidget(title_label)
+
+        # Search bar
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search by position, company, or tech stack...")
+        self.search_bar.setMinimumHeight(40)
+        self.search_bar.setStyleSheet("""
+            QLineEdit {
+                padding: 10px;
+                font-size: 12pt;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                background-color: white;
+                margin-top: 15px;
+                margin-bottom: 15px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4CAF50;
+            }
+        """)
+        self.search_bar.textChanged.connect(self.filter_history_items)
+        page_layout.addWidget(self.search_bar)
+
+        # Scrollable area for history items
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("QScrollArea { border: none; }")
+
+        # Container widget for scrollable content
+        scroll_content = QWidget()
+        self.files_layout = QVBoxLayout(scroll_content)
+        self.files_layout.setSpacing(15)
+        self.files_layout.setContentsMargins(0, 0, 20, 20)
+
+        scroll_area.setWidget(scroll_content)
+        page_layout.addWidget(scroll_area)
+
+        # Add page to stacked widget
+        self.stacked_widget.addWidget(self.files_page)
+
+    def show_files_page(self):
+        """Refresh and show the files page"""
+        from Utility import get_json_datas
+
+        # Clear existing history items (keep the title and search bar)
+        while self.files_layout.count() > 2:
+            item = self.files_layout.takeAt(2)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Load fresh data
+        datas = get_json_datas()
+        datas = sorted(datas, key=lambda data: data['Meta']['Date Created'], reverse=True)
+
+        # Store history items with their data for filtering
+        self.history_items = []
+
+        # Add history items
+        for data in datas:
+            job_data = data['Job']
+            history_item = self.create_history_item(job_data)
+            self.files_layout.addWidget(history_item)
+
+            # Store item with its searchable data
+            self.history_items.append({
+                'widget': history_item,
+                'position': job_data['Position Title'].lower(),
+                'company': job_data['Company Name'].lower(),
+                'tech_stack': ' '.join(job_data['Tech Stack']).lower()
+            })
+
+        # Add stretch to push content to top
+        self.files_layout.addStretch()
+
+        # Clear search bar
+        self.search_bar.clear()
+
+        # Switch to files page
+        self.stacked_widget.setCurrentIndex(1)
+
+    def filter_history_items(self):
+        """Filter history items based on search query"""
+        query = self.search_bar.text().lower()
+
+        for item_data in self.history_items:
+            # Check if query matches position, company, or tech stack
+            if (query in item_data['position'] or
+                query in item_data['company'] or
+                query in item_data['tech_stack']):
+                item_data['widget'].setVisible(True)
+            else:
+                item_data['widget'].setVisible(False)
+
+    def create_history_item(self, job_data):
+        """Create a history item widget"""
+        # Destructure job data
+        position = job_data['Position Title']
+        company = job_data['Company Name']
+        start_date = job_data['Date Applied']
+        end_date = job_data['Expected Response Date']
+        tags = job_data.get('Tech Stack', None)
+        salary = job_data.get('Salary', None)
+        match_rating = int(job_data.get('Match Rating', 0))
+
+        current_date = datetime.now()
+
+        item_widget = QWidget()
+        item_widget.setStyleSheet("""
+            QWidget {
+                background-color: white;
+                border: none;
+                border-radius: 12px;
+            }
+            QWidget:hover {
+                background-color: #fafafa;
+            }
+        """)
+
+        item_layout = QVBoxLayout(item_widget)
+        item_layout.setSpacing(12)
+        item_layout.setContentsMargins(20, 16, 20, 16)
+
+        # Header with position, company, salary, match rating, and date
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(16)
+
+        position_company_label = QLabel(f"{position} at {company}")
+        position_company_label.setStyleSheet("font-size: 15pt; font-weight: bold; color: #1a1a1a;")
+        header_layout.addWidget(position_company_label)
+
+        header_layout.addStretch()
+
+        if salary:
+            salary_label = QLabel(f"💰 {salary}")
+            salary_label.setStyleSheet("""
+                font-size: 10pt;
+                color: #2e7d32;
+                font-weight: 600;
+                background-color: #e8f5e9;
+                padding: 4px 10px;
+                border-radius: 6px;
+            """)
+            header_layout.addWidget(salary_label)
+
+        if match_rating is not None:
+            # Determine color based on rating
+            if match_rating >= 8:
+                rating_color = "#2e7d32"  # Dark green
+                rating_bg = "#e8f5e9"     # Light green bg
+            elif match_rating >= 5:
+                rating_color = "#ef6c00"  # Dark orange
+                rating_bg = "#fff3e0"     # Light orange bg
+            else:
+                rating_color = "#c62828"  # Dark red
+                rating_bg = "#ffebee"     # Light red bg
+
+            match_label = QLabel(f"⭐ {match_rating}/10")
+            match_label.setStyleSheet(f"""
+                font-size: 10pt;
+                color: {rating_color};
+                font-weight: 600;
+                background-color: {rating_bg};
+                padding: 4px 10px;
+                border-radius: 6px;
+            """)
+            header_layout.addWidget(match_label)
+
+        # Date range label
+        date_range_text = f"{start_date} - {end_date}"
+        date_label = QLabel(date_range_text)
+
+        # Parse dates and calculate elapsed time
+        try:
+            start_date_obj = datetime.strptime(start_date, "%m/%d/%y")
+            end_date_obj = datetime.strptime(end_date, "%m/%d/%y")
+
+            # Calculate total duration and elapsed time
+            total_duration = (end_date_obj - start_date_obj).total_seconds()
+            elapsed_time = (current_date - start_date_obj).total_seconds()
+
+            # Calculate progress ratio
+            if total_duration > 0:
+                progress_ratio = elapsed_time / total_duration
+            else:
+                progress_ratio = 0
+
+            # Determine color based on progress
+            if progress_ratio < 0:
+                # Not started yet - blue/gray
+                date_label.setStyleSheet("""
+                    font-size: 9pt;
+                    color: #757575;
+                    background-color: #f5f5f5;
+                    padding: 4px 10px;
+                    border-radius: 6px;
+                """)
+            elif progress_ratio < 1/3:
+                # First third - green
+                date_label.setStyleSheet("""
+                    font-size: 9pt;
+                    color: white;
+                    background-color: #4CAF50;
+                    padding: 4px 10px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                """)
+            elif progress_ratio < 2/3:
+                # Second third - yellow/orange
+                date_label.setStyleSheet("""
+                    font-size: 9pt;
+                    color: white;
+                    background-color: #FF9800;
+                    padding: 4px 10px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                """)
+            elif progress_ratio <= 1:
+                # Final third - red
+                date_label.setStyleSheet("""
+                    font-size: 9pt;
+                    color: white;
+                    background-color: #f44336;
+                    padding: 4px 10px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                """)
+            else:
+                # Past due - dark red
+                date_label.setStyleSheet("""
+                    font-size: 9pt;
+                    color: white;
+                    background-color: #c62828;
+                    padding: 4px 10px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                """)
+        except:
+            # If date parsing fails, use default style
+            date_label.setStyleSheet("""
+                font-size: 9pt;
+                color: #757575;
+                background-color: #f5f5f5;
+                padding: 4px 10px;
+                border-radius: 6px;
+            """)
+
+        header_layout.addWidget(date_label)
+
+        item_layout.addLayout(header_layout)
+
+        # Tags
+        if tags:
+            tags_layout = QHBoxLayout()
+            tags_layout.setSpacing(6)
+
+            for tag in tags:
+                tag_label = QLabel(tag)
+                tag_label.setStyleSheet("""
+                    QLabel {
+                        background-color: #e3f2fd;
+                        color: #1565c0;
+                        padding: 5px 14px;
+                        border-radius: 14px;
+                        font-size: 9pt;
+                        font-weight: 600;
+                        border: 1px solid #bbdefb;
+                    }
+                """)
+                tags_layout.addWidget(tag_label)
+
+            tags_layout.addStretch()
+            item_layout.addLayout(tags_layout)
+
+        return item_widget
+
+    #endregion
+
+    def create_statistics_page(self):
+        """Create the statistics page"""
         page = QWidget()
         main_layout = QVBoxLayout(page)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
         # Title
-        title_label = QLabel("History")
+        title_label = QLabel("Statistics")
         title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
         main_layout.addWidget(title_label)
 
         # Placeholder content
-        info_label = QLabel("This page will show all the generated resumes.")
+        info_label = QLabel("This page will show application statistics and charts.")
+        info_label.setStyleSheet("font-size: 12pt; color: #666;")
+        main_layout.addWidget(info_label)
+
+        # Add stretch to push content to top
+        main_layout.addStretch()
+
+        # Add page to stacked widget
+        self.stacked_widget.addWidget(page)
+
+    def create_settings_page(self):
+        """Create the settings page"""
+        page = QWidget()
+        main_layout = QVBoxLayout(page)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Title
+        title_label = QLabel("Settings")
+        title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
+        main_layout.addWidget(title_label)
+
+        # Placeholder content
+        info_label = QLabel("This page will contain application settings.")
         info_label.setStyleSheet("font-size: 12pt; color: #666;")
         main_layout.addWidget(info_label)
 
@@ -297,6 +665,8 @@ class ResumeApp(QMainWindow):
             meta = data['Meta']
 
             clear_temp()
+
+            self.generate_button.setText("Processing Documents...")
             
             resume_data = expand_list_to_keys(data['Resume'], "")
             cover_letter_data = data['CoverLetter']
@@ -305,9 +675,12 @@ class ResumeApp(QMainWindow):
             cover_letter_name = cover_letter_data['File Name']
             #region Editing Meta Data
 
+            current_date_time = datetime.now()
+
             data['Meta']['Resume Path'] = str(paths['results'] / f"{resume_name}.docx")
             data['Meta']['Cover Letter Path'] = str(paths['results'] / f"{cover_letter_name}.docx")
             data['Meta']['Model Used'] = model
+            data['Meta']['Date Created'] = current_date_time.isoformat()
             #endregion
 
             # clear_temp()

@@ -1,16 +1,14 @@
 {
     "Meta": {
         "File Name": "{Company Name}",
-        "Company Name": "",
-        "Position Name": "",
         "Date Created": "{Date in PST}",
         "Note from ChatGPT": []
     },
 
     "Resume": {
         "File Name": "{Company Name} Resume",
-        "Summary": "",
-        "Job1Title" : "Software Engineer - Company Name | Jan 2023 - Jan 2025",
+        "Summary": "(240 - 335 Characters Including Spaces)",
+        "Job1Title" : "{Title} - {Company} | Jan 2023 - Jan 2025",
         "J1Details" : [
             "Details1 (>93 Characters)",
             "Details2 (>93 Characters)",
@@ -19,18 +17,18 @@
             "Details5 (<90 Characters)",
             "Details6 (<90 Characters)"
         ],
-        "Job2Title": "Software Engineer - Company Name | Jan 2022 - Jan 2023",
+        "Job2Title": "{Title} - {Company} | Jan 2022 - Jan 2023",
         "J2Details" : [
             "Details1 (>93 Characters)",
             "Details2 (<90 Characters)",
             "Details3 (<90 Characters)"
         ],
         "TechnicalSkillsCategory1" : "",
-        "TechnicalSkillsCategory1List" : "",
+        "TechnicalSkillsCategory1List" : ">89 Characters",
         "TechnicalSkillsCategory2" : "",
-        "TechnicalSkillsCategory2List" : "",
+        "TechnicalSkillsCategory2List" : "<75 Characters",
         "TechnicalSkillsCategory3" : "",
-        "TechnicalSkillsCategory3List" : "",
+        "TechnicalSkillsCategory3List" : "<75 Characters",
         "Certifications": "",
         "PersonalProject1" : "{Project Name} - {Tech Stack}",
         "P1Details" : [
@@ -51,6 +49,20 @@
         "Paragraph1": "",
         "Paragraph2": "",
         "Paragraph3": ""
+    },
+
+    "Job": {
+        "Company Name" : "",
+        "Position Title": "",
+        "Salary" : "{$USD | 'Equity' | 'Not Provided'}",
+        "Description" : "2-3 Sentences explaining the position and company.",
+        "Tech Stack": ["C#", ".Net", "Typescript"],
+        "Company Size": "",
+        "Responsibilities": [],
+        "Motive": "Reason why I should be interested in this job opportunity in first person or my point of view.",
+        "Match Rating": "Rating out of 10 and only the numerator. In number type",
+        "Date Applied" : "mm/dd/yy",
+        "Expected Response Date": "mm/dd/yy of when I should stop waiting for a response."
     }
     
 } 
