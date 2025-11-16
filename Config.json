@@ -1,0 +1,15 @@
+{
+    "Settings": {
+        "Auto Archive Expired Applications": false,
+        "GPT Model": "gpt-5"
+    },
+    "Resources": {
+        "Available Models": [
+            "gpt-5",
+            "gpt-5-chat-latest",
+            "gpt-5-mini",
+            "gpt-5-nano",
+            "chatgpt-4o-latest"
+        ]
+    }
+}

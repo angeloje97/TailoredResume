@@ -2,6 +2,7 @@ from pathlib import Path
 from icecream import ic
 from docx import Document
 from docx2pdf import convert
+from pygame import mixer
 import json
 import shutil
 import os
@@ -27,6 +28,8 @@ resume_prompt = ""
 json_template = {}
 resume_template = ""
 cover_letter_template = ""
+
+config = {}
 
 #endregion
 
@@ -132,13 +135,40 @@ def get_json_datas():
     json_datas = []
     ensure_path_exists(paths["json_data"])
 
-    json_paths = list(paths['json_data'].glob("*.json"))
-    
+    # Only get JSON files in the json_data folder, not in subdirectories (like Archived)
+    json_paths = [p for p in paths['json_data'].glob("*.json") if p.is_file()]
+
     for path in json_paths:
         with open(path, 'r', encoding="utf-8") as file:
             json_datas.append(json.load(file))
 
     return json_datas
+
+def get_config():
+    global base_dir
+    global config
+    full_path = base_dir / "Config.json"
+
+    with open(full_path, 'r', encoding="utf-8") as file:
+        config = json.load(file)
+    
+    return config
+
+def update_config(config_data):
+    global base_dir
+    full_path = base_dir / "Config.json"
+
+    with open(full_path, 'w', encoding='utf-8') as file:
+        json.dump(config_data, file, indent=4, ensure_ascii=False)
+
+def archive_json_data(json_file_name):
+    full_path = paths['json_data'] / f"{json_file_name}.json"
+    destination_path = paths['json_data'] / 'Archived'
+
+    ensure_path_exists(destination_path)
+
+    shutil.move(full_path, destination_path)
+
 
 def save_document_result(doc: Document, name: str):
     global paths
@@ -266,6 +296,16 @@ def get_resume_full_resume_text() -> str:
         full_base_resume_text += "\n".join(text)
 
     return full_base_resume_text
+
+def play_sound(mp3_path: str):
+    mixer.init()
+    mixer.music.load(mp3_path)
+    mixer.music.play()
+
+def play_notification_sound():
+    full_path = paths['resources'] / "Notification Sound.mp3"
+
+    play_sound(full_path)
 #endregion
 
 #region Main Script
@@ -277,6 +317,8 @@ get_resume_full_resume_text()
 # Populate base resume texts
 
 #endregion
+
+get_config()
 
 get_json_datas()
 
