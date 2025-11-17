@@ -42,10 +42,12 @@ This is a Python desktop application for tailoring resumes using AI. It features
   - Keeps GUI responsive during API calls
 - **ResumeApp class**: Main window with sidebar navigation (📄 Resume, 🗂️ Files, 📊 Statistics, ⚙️ Settings)
 - **Page 0 - Resume generation**: Input fields for company name, job title, and job description
-- **Page 1 - Files/History**: Displays generated resumes with filtering (search, match rating, job quality)
+- **Page 1 - Files/History**: Displays generated resumes with filtering (search, match rating, job quality, date range, favorites)
   - Expandable history items showing job details, responsibilities, company size, quality ratings
   - Archive functionality to move JSON files to Archived subfolder
-  - Action buttons: open folder, generate documents (placeholder)
+  - Action buttons in expanded view: open folder (📁), generate documents (📝), favorite (⭐)
+  - Favorite button shows green background when favorited, white background when not favorited
+  - Favorite filter checkbox (⭐ Favorites) to show only favorited items
 - **Page 2 - Statistics**: Placeholder for charts and analytics
 - **Page 3 - Settings**: Configure GPT model and auto-archive behavior (saved to Config.json)
 - **UI Framework**: Uses QStackedWidget for page switching, custom styled widgets with emojis
@@ -152,7 +154,7 @@ paths = {
 
 **JSON Template** (Resources/Json Template.json):
 Four-section structure for AI response:
-- **Meta**: File naming (`{Position Title} {Company Name}`), date created, AI notes, resume/cover letter paths (populated by code)
+- **Meta**: File naming (`{Position Title} {Company Name}`), date created, AI notes, resume/cover letter paths (populated by code), favorite status (boolean, default false)
 - **Resume**: File name, summary (240-335 chars), 2 jobs with details (arrays of 3-6 items), technical skills (3 categories), certifications, 2 projects with details (arrays of 2 items)
 - **CoverLetter**: File name, date, company name, 3 paragraphs
 - **Job**: Company name, position title, salary, description (2-3 sentences), tech stack (max 10), job quality (1-10 float with description), company size, responsibilities (array), motive (first-person), match rating (1-10 float with description), date applied (mm/dd/yy), expected response date (mm/dd/yy)
@@ -376,6 +378,9 @@ def on_response_callback(response_text):
 - Search bar filters by position, company, or tech stack (case-insensitive)
 - Min rating dropdown filters by match rating (1-10)
 - Min quality dropdown filters by job quality (1-10)
+- Date filter dropdown filters by date range (Today, Last 3/7/30 Days, Any day)
+- Favorite checkbox filters to show only favorited items
+- All filters work together (AND logic) - items must match all active filters
 - Filters update title label with visible count and today's count
 
 **History item expansion**:
@@ -399,6 +404,7 @@ data['Meta']['Resume Path'] = str(paths['results'] / f"{resume_name}.docx")
 data['Meta']['Cover Letter Path'] = str(paths['results'] / f"{cover_letter_name}.docx")
 data['Meta']['Model Used'] = model  # or get_config()['Settings']['GPT Model']
 data['Meta']['Date Created'] = datetime.now().isoformat()
+data['Meta']['Favorite'] = False  # Initialize favorite status
 
 # 4. Save complete JSON for history (with expanded lists)
 save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
@@ -506,4 +512,41 @@ quality_jobs = [d for d in datas if float(d['Job']['Job Quality']) >= 7]
 
 # Search in tech stack
 python_jobs = [d for d in datas if 'Python' in d['Job']['Tech Stack']]
+```
+
+**Favorite functionality**:
+```python
+# Toggle favorite status for a history item
+data['Meta']['Favorite'] = not data['Meta'].get('Favorite', False)
+
+# Save the updated JSON
+from Utility import save_json_obj, expand_list_to_keys
+save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
+
+# Update in-memory history item data for immediate filter response
+for item_data in self.history_items:
+    if item_data['widget'] == item_widget:
+        item_data['favorite'] = data['Meta']['Favorite']
+        break
+
+# Visual feedback: Update button style based on favorite status
+# Green background (#4CAF50) when favorited, white background when not
+```
+
+**Generate documents from history**:
+```python
+# Regenerate resume and cover letter from saved JSON data
+def generate_documents(self, data):
+    clear_temp()
+    resume_data = data['Resume']  # Already has expanded keys from JSON
+    cover_letter_data = data['CoverLetter']
+
+    resume_doc = write_to_docx(resume_template, resume_data)
+    cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
+
+    save_document_temp(resume_doc, resume_data['File Name'])
+    save_document_temp(cover_letter_doc, cover_letter_data['File Name'])
+
+    convert_temp_to_pdf()
+    copy_temp_to_results()
 ```

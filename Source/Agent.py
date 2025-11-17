@@ -13,14 +13,12 @@ load_dotenv(dotenv_path=env_path)
 # Create async OpenAI client
 client = AsyncOpenAI()
 
-model = "gpt-5"
 role = "user"
 
 # Extract the main message content
 
 
 async def create_request(message):
-    global model
     global role
 
     config = get_config()

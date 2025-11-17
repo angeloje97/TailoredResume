@@ -1,20 +1,20 @@
 {
     "Meta": {
-        "File Name": "{Company Name}",
+        "File Name": "{Position Title} {Company Name}",
         "Date Created": "{Date in PST}",
         "Note from ChatGPT": []
     },
 
     "Resume": {
-        "File Name": "{Company Name} Resume",
+        "File Name": "Angelo_Esmeralda_{Company Name}_{Role if it's not long}_Resume",
         "Summary": "(240 - 335 Characters Including Spaces)",
         "Job1Title" : "{Title} - {Company} | Jan 2023 - Jan 2025",
         "J1Details" : [
             "Details1 (~93-210 Characters)",
-            "Details2 (~93-210 Characters)",
-            "Details3 (<90 Characters)",
+            "Details2 (<90 Characters)",
+            "Details3 (~93-210 Characters)",
             "Details4 (<90 Characters)",
-            "Details5 (<90 Characters)",
+            "Details5 (~93-210 Characters)",
             "Details6 (<90 Characters)"
         ],
         "Job2Title": "{Title} - {Company} | Jan 2022 - Jan 2023",
@@ -32,7 +32,7 @@
         "Certifications": "",
         "PersonalProject1" : "{Project Name} - {Tech Stack}",
         "P1Details" : [
-            "Details1 (~93-210 Characters)",
+            "Details1 (<90 Characters)",
             "Details2 (<90 Characters)"
         ],
         "PersonalProject2": "{Project Name} - {Tech Stack}",
@@ -43,7 +43,7 @@
     },
 
     "CoverLetter" : {
-        "File Name" : "{Company Name} Cover Letter",
+        "File Name" : "Angelo_Esmeralda_{Company Name}_{Role if it's not long}_Cover_Letter",
         "Date": "January 1st, 2025",
         "CompanyName": "",
         "Paragraph1": "",
@@ -57,14 +57,15 @@
         "Salary" : "{$USD | 'Equity' | 'Not Provided'}",
         "Description" : "2-3 Sentences explaining the position and company.",
         "Tech Stack": ["C#", ".Net", "Typescript", "...Max Top 10"],
-        "Job Quality" : "A number on a scale from 1 to 10 on how good the job sounds in terms of work life balance, learning opportunity, work culture, red/green flags in the job description, and how well the things I learn from this job will transfer over to other better jobs.",
+        "Job Quality" : "A number on a scale from 1 to 10 on how good the job sounds in terms of work life balance, learning opportunity, work culture, red/green flags in the job description, and how well the things I learn from this job will transfer over to other better jobs. Can be a float",
         "Job Quality Description": "Explanation of why the job quality was given that rating.",
         "Company Size": "",
         "Responsibilities": [],
         "Motive": "Reason why I should be interested in this job opportunity in first person or my point of view.",
-        "Match Rating": "Rating out of 10 and only the numerator. In number type",
+        "Match Rating": "Rating out of 10 and only the numerator. In number type and it can be a float value",
+        "Match Rating Description": "Reason for choosing the match rating",
         "Date Applied" : "mm/dd/yy",
-        "Expected Response Date": "mm/dd/yy of when I should stop waiting for a response."
+        "Expected Response Date": "mm/dd/yy of when I should stop waiting for a response. Keep in mind the date posted (if it was given in the prompt)"
     }
     
 } 

@@ -11,6 +11,8 @@
      - KEEPING my authentic voice and specific metrics/accomplishments
      - Avoiding generic AI phrases like "spearheaded," "leveraged," "synergized"
      - Feel free to rewrite the experience job position title with any way you see fit.
+     - Try to make my experience job position title sound like a developer if the job description requires a developer.
+     - Make it stand for whatever ATS you think is being used.
 
   ## 3. PRESERVE authenticity:
      - Use concrete numbers and specific technologies from my actual experience
@@ -31,7 +33,8 @@
      - Prioritize impact: fewer, stronger bullets over many weak ones
      - Include only 2 most relevant jobs and 2 most relevant projects
      - If the arrays in the json template has x items in the array. Make sure you fill out x items minimum.
-     - Important: Do not break a sentence and put it into 2 different fields. Make sure there is 1 sentence for 1 field and 1 field for 1 sentence for details
+     - Important: Do not break a sentence and put it into 2 different fields. Make sure there is 1 sentence for 1 field and 1 field for 1 sentence for details.
+     - Also if you write C#, don't write it as C Sharp unless you think that's what the ATS will be watching out for.
 
   ## 5. STRUCTURE priorities (in order):
      - Summary: 2-3 lines highlighting directly relevant experience
@@ -40,3 +43,13 @@
      - Projects: Only include if highly relevant to the role
      - Do not use new line breaks in the summary. No '\n'. Just let it flow.
      - Do not use any hyphens in the cover page data as it might give away that I am using AI.
+
+  ## 6. Match rating, A number (float) from 0.0 to 10.0 calculated using this rubric:
+     - +~3 points: Overlap between job tech stack and my skills.
+     - +~2 points: Similar responsibilities to my background (automation, .NET, APIs, CI/CD, SQL).
+     - +~2 points: Role is junior / mid-level friendly or accepts 2–3 years experience.
+     - +~1 point: Missing skills are learnable within weeks.
+     - -~1 point: Seniority requirement exceeds my background by more than 3 years.
+     - -~1 point: Heavy AWS-only or Angular-only requirements I do not have.
+     - -~1 point: Role demands ML, embedded systems, cybersecurity, or unrelated domains.
+     - They don't have to be whole numbers. They can be a float.
