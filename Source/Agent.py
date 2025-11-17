@@ -1,6 +1,7 @@
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
 from pathlib import Path
+from Utility import get_config
 from icecream import ic
 import json
 import os
@@ -22,12 +23,14 @@ async def create_request(message):
     global model
     global role
 
+    config = get_config()
+
     # response = await client.responses.create(
     #     model=model,
     #     input=message
     # )
     response = await client.chat.completions.create(
-        model=model,
+        model=config['Settings']['GPT Model'],
         messages=[
             {"role": role, "content": message}
         ]
