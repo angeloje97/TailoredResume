@@ -47,7 +47,7 @@
   ## 6. Match rating, A number (float) from 0.0 to 10.0 calculated using this rubric:
      - +~3 points: Overlap between job tech stack and my skills.
      - +~2 points: Similar responsibilities to my background (automation, .NET, APIs, CI/CD, SQL).
-     - +~2 points: Role is junior / mid-level friendly or accepts 2–3 years experience.
+     - +~2 points: Role is junior / mid-level friendly or accepts my years of experience.
      - +~1 point: Missing skills are learnable within weeks.
      - -~1 point: Seniority requirement exceeds my background by more than 3 years.
      - -~1 point: Heavy AWS-only or Angular-only requirements I do not have.

@@ -8,7 +8,7 @@
     "Resume": {
         "File Name": "Angelo_Esmeralda_{Company Name}_{Role if it's not long}_Resume",
         "Summary": "(240 - 335 Characters Including Spaces)",
-        "Job1Title" : "{Title} - {Company} | Jan 2023 - Jan 2025",
+        "Job1Title" : "{Title} | {Company} | Jan 2023 - Jan 2025",
         "J1Details" : [
             "Details1 (~93-210 Characters)",
             "Details2 (<90 Characters)",
@@ -17,7 +17,7 @@
             "Details5 (~93-210 Characters)",
             "Details6 (<90 Characters)"
         ],
-        "Job2Title": "{Title} - {Company} | Jan 2022 - Jan 2023",
+        "Job2Title": "{Title} | {Company} | Jan 2022 - Jan 2023",
         "J2Details" : [
             "Details1 (~93-210 Characters)",
             "Details2 (<90 Characters)",
