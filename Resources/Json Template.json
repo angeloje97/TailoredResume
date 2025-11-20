@@ -8,6 +8,7 @@
     "Resume": {
         "File Name": "Angelo_Esmeralda_{Company Name}_{Role if it's not long}_Resume",
         "Summary": "(240 - 335 Characters Including Spaces)",
+        "Job Title Note": "Only use professional experiences for Job1Title and Job2Title",
         "Job1Title" : "{Title} | {Company} | Jan 2023 - Jan 2025",
         "J1Details" : [
             "Details1 (~93-210 Characters)",

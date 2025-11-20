@@ -144,6 +144,21 @@ def get_json_datas():
 
     return json_datas
 
+def get_archived_datas():
+    global paths
+
+    archived_path = paths['json_data'] / "Archived"
+
+    ensure_path_exists(archived_path)
+
+    json_paths = [p for p in archived_path.glob("*.json") if p.is_file()]
+    datas = []
+    for path in json_paths:
+        with open(path, 'r', encoding='utf-8') as file:
+            datas.append(json.load(file))
+    return datas
+
+
 def get_config():
     global base_dir
     global config
