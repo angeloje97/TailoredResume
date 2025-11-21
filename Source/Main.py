@@ -1443,6 +1443,9 @@ class ResumeApp(QMainWindow):
 
             clear_temp()
 
+            play_notification_sound()
+
+
             self.generate_button.setText("Processing Documents...")
             
             resume_data = expand_list_to_keys(data['Resume'], "")
@@ -1478,7 +1481,6 @@ class ResumeApp(QMainWindow):
 
             copy_temp_to_results()
 
-            play_notification_sound()
 
 
             #endregion
