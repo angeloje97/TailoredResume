@@ -180,9 +180,44 @@ def archive_json_data(json_file_name):
     full_path = paths['json_data'] / f"{json_file_name}.json"
     destination_path = paths['json_data'] / 'Archived'
 
-    ensure_path_exists(destination_path)
+    backup_path = paths['json_data'] / f"{json_file_name} Data.json"
 
-    shutil.move(full_path, destination_path)
+    ensure_path_exists(destination_path)
+    try:
+
+        shutil.move(full_path, destination_path)
+
+    except Exception as e1:
+
+        print(f"Trouble moving{json_file_name}\n{e1}")
+        print(f"Using backup path {backup_path}")
+
+        try:
+
+            shutil.move(backup_path, destination_path) 
+
+        except Exception as e2:
+
+            print(f"Trouble moving backup path\n{e2}")
+
+def restore_archive_data(json_file_name):
+    global paths
+
+    full_path = paths['json_data'] / f'Archived' / f"{json_file_name}.json"
+    back_up_path = paths['json_data'] / f'Archived' / f"{json_file_name} Data.json"
+
+    destination_path = paths['json_data']
+
+    try:
+        shutil.move(full_path, destination_path)
+        
+    except Exception as e1:
+        print(f"Something went wrong with moving {json_file_name}, using backup now\n{e1}")
+        try:
+            shutil.move(back_up_path, destination_path)
+
+        except Exception as e2:
+            print(f"Something went wrong when moving backup path\n{e2}")
 
 
 def save_document_result(doc: Document, name: str):

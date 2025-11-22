@@ -1250,21 +1250,210 @@ class ResumeApp(QMainWindow):
         self.archive_title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
         page_layout.addWidget(self.archive_title_label)
 
-        # Placeholder content
-        info_label = QLabel("This page will show archived applications.")
-        info_label.setStyleSheet("font-size: 12pt; color: #666; margin-top: 15px;")
-        page_layout.addWidget(info_label)
+        # Create scroll area for archived items
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: #f5f5f5;
+            }
+        """)
 
-        # Add stretch to push content to top
-        page_layout.addStretch()
+        # Container for archived items
+        self.archive_container = QWidget()
+        self.archive_layout = QVBoxLayout(self.archive_container)
+        self.archive_layout.setSpacing(12)
+        self.archive_layout.setContentsMargins(0, 15, 0, 20)
+        self.archive_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        scroll_area.setWidget(self.archive_container)
+        page_layout.addWidget(scroll_area)
 
         # Add page to stacked widget
         self.stacked_widget.addWidget(self.archive_page)
 
     def show_archive_page(self):
         """Refresh and show the archive page"""
+        from Utility import get_archived_datas
+
+        # Clear existing items
+        while self.archive_layout.count():
+            item = self.archive_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Load archived data
+        archived_datas = get_archived_datas()
+
+        # Update title with count
+        self.archive_title_label.setText(f"Archive ({len(archived_datas)} Results)")
+
+        # Create archive items
+        for data in archived_datas:
+            try:
+                archive_item = self.create_archive_item(data)
+            except Exception as e:
+                name = data['Meta']['File Name']
+                print(f"{'-'*50}\nCould not create archived item\n{name}\n{'-'*50}\n")
+            self.archive_layout.addWidget(archive_item)
+
         # Switch to archive page
         self.stacked_widget.setCurrentIndex(2)
+
+    def create_archive_item(self, data):
+        """Create a simplified archive item widget showing company, match rate, job quality, and applied date"""
+        from Utility import restore_archive_data
+        
+        job_data = data['Job']
+
+        # Extract data
+        company = job_data['Company Name']
+        position = job_data['Position Title']
+        date_applied = job_data.get('Date Applied', "N/A")
+        expected_response = job_data.get('Expected Response Date', "N/A")
+        match_rating = job_data.get('Match Rating', 0)
+        job_quality = job_data.get('Job Quality', 5)
+
+        try:
+            match_rating = float(match_rating)
+        except:
+            match_rating = 5.0
+
+        try:
+            job_quality = float(job_quality)
+        except:
+            job_quality = 5.0
+
+        # Main widget
+        item_widget = QWidget()
+        item_widget.setStyleSheet("""
+            QWidget {
+                background-color: white;
+                border: none;
+                border-radius: 8px;
+            }
+        """)
+
+        item_layout = QHBoxLayout(item_widget)
+        item_layout.setSpacing(16)
+        item_layout.setContentsMargins(20, 12, 20, 12)
+
+        # Company name label
+        company_label = QLabel(f"{position} at {company}")
+        company_label.setStyleSheet("font-size: 13pt; font-weight: bold; color: #1a1a1a;")
+        item_layout.addWidget(company_label)
+
+        item_layout.addStretch()
+
+        # Job Quality badge
+        if job_quality is not None:
+            # Determine color based on job quality
+            if job_quality >= 8:
+                quality_color = "#2e7d32"  # Dark green
+                quality_bg = "#e8f5e9"     # Light green bg
+            elif job_quality >= 5:
+                quality_color = "#ef6c00"  # Dark orange
+                quality_bg = "#fff3e0"     # Light orange bg
+            else:
+                quality_color = "#c62828"  # Dark red
+                quality_bg = "#ffebee"     # Light red bg
+
+            quality_label = QLabel(f"💎 {job_quality}/10")
+            quality_label.setStyleSheet(f"""
+                font-size: 9pt;
+                color: {quality_color};
+                font-weight: 600;
+                background-color: {quality_bg};
+                padding: 4px 10px;
+                border-radius: 6px;
+            """)
+            item_layout.addWidget(quality_label)
+
+        # Match rating badge
+        if match_rating is not None:
+            # Determine color based on rating
+            if match_rating >= 8:
+                rating_color = "#2e7d32"  # Dark green
+                rating_bg = "#e8f5e9"     # Light green bg
+            elif match_rating >= 5:
+                rating_color = "#ef6c00"  # Dark orange
+                rating_bg = "#fff3e0"     # Light orange bg
+            else:
+                rating_color = "#c62828"  # Dark red
+                rating_bg = "#ffebee"     # Light red bg
+
+            match_label = QLabel(f"⭐ {match_rating}/10")
+            match_label.setStyleSheet(f"""
+                font-size: 9pt;
+                color: {rating_color};
+                font-weight: 600;
+                background-color: {rating_bg};
+                padding: 4px 10px;
+                border-radius: 6px;
+            """)
+            item_layout.addWidget(match_label)
+
+        # Date range label (applied - expected response)
+        date_range_text = f"{date_applied} - {expected_response}"
+        date_label = QLabel(date_range_text)
+        date_label.setStyleSheet("""
+            font-size: 9pt;
+            color: #757575;
+            background-color: #f5f5f5;
+            padding: 4px 10px;
+            border-radius: 6px;
+        """)
+        item_layout.addWidget(date_label)
+
+        # Restore button
+        restore_btn = QPushButton("↩️")
+        restore_btn.setFixedSize(36, 36)
+        restore_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        restore_btn.setToolTip("Restore")
+        restore_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 16pt;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: #e3f2fd;
+                border: 2px solid #2196F3;
+            }
+            QPushButton:pressed {
+                background-color: #bbdefb;
+            }
+        """)
+        restore_btn.clicked.connect(lambda: self.restore_archive_item(data))
+        item_layout.addWidget(restore_btn)
+
+        return item_widget
+
+    def restore_archive_item(self, data):
+        """Restore an archived item back to the history section"""
+        from Utility import restore_archive_data
+        from PySide6.QtWidgets import QMessageBox
+
+        file_name = f"{data['Meta']['File Name']}"
+
+        # Show confirmation dialog
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle("Restore Archive")
+        msg_box.setText(f"Restore '{file_name}' back to history?")
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg_box.setDefaultButton(QMessageBox.StandardButton.Yes)
+
+        result = msg_box.exec()
+
+        if result == QMessageBox.StandardButton.Yes:
+            # Restore the JSON file
+            restore_archive_data(file_name)
+
+            # Refresh the archive page
+            self.show_archive_page()
 
     #endregion
 
