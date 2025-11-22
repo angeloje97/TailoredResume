@@ -79,6 +79,8 @@ class ResumeApp(QMainWindow):
 
     def create_sidebar(self, parent_layout):
         """Create the left sidebar with navigation"""
+
+        from Widgets import SideBarButton
         sidebar = QWidget()
         sidebar.setFixedWidth(80)
         sidebar.setStyleSheet("""
@@ -92,121 +94,26 @@ class ResumeApp(QMainWindow):
         sidebar_layout.setSpacing(0)
 
         # Resume Generation button
-        self.resume_btn = QPushButton("📄")
-        self.resume_btn.setFixedSize(80, 80)
-        self.resume_btn.setToolTip("Resume Generator")
-        self.resume_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #34495e;
-                color: white;
-                font-size: 32pt;
-                border: none;
-                border-left: 4px solid #2c3e50;
-            }
-            QPushButton:hover {
-                background-color: #4CAF50;
-                border-left: 4px solid #4CAF50;
-            }
-            QPushButton:pressed {
-                background-color: #45a049;
-            }
-        """)
-        self.resume_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
+
+        self.resume_btn = SideBarButton("📄", "Resume Generator", lambda: self.stacked_widget.setCurrentIndex(0))
         sidebar_layout.addWidget(self.resume_btn)
 
-        # Files/History button
-        self.files_btn = QPushButton("🗂️")
-        self.files_btn.setFixedSize(80, 80)
-        self.files_btn.setToolTip("Generated Resumes")
-        self.files_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #34495e;
-                color: white;
-                font-size: 32pt;
-                border: none;
-                border-left: 4px solid #2c3e50;
-            }
-            QPushButton:hover {
-                background-color: #4CAF50;
-                border-left: 4px solid #4CAF50;
-            }
-            QPushButton:pressed {
-                background-color: #45a049;
-            }
-        """)
-        self.files_btn.clicked.connect(self.show_files_page)
+        self.files_btn = SideBarButton("🗂️", "History", self.show_files_page)
         sidebar_layout.addWidget(self.files_btn)
 
         # Archive button
-        self.archive_btn = QPushButton("📦")
-        self.archive_btn.setFixedSize(80, 80)
-        self.archive_btn.setToolTip("Archive")
-        self.archive_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #34495e;
-                color: white;
-                font-size: 32pt;
-                border: none;
-                border-left: 4px solid #2c3e50;
-            }
-            QPushButton:hover {
-                background-color: #4CAF50;
-                border-left: 4px solid #4CAF50;
-            }
-            QPushButton:pressed {
-                background-color: #45a049;
-            }
-        """)
-        self.archive_btn.clicked.connect(self.show_archive_page)
+        self.archive_btn = SideBarButton("📦", "Archive", self.show_archive_page)
         sidebar_layout.addWidget(self.archive_btn)
 
         # Statistics button
-        self.stats_btn = QPushButton("📊")
-        self.stats_btn.setFixedSize(80, 80)
-        self.stats_btn.setToolTip("Statistics")
-        self.stats_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #34495e;
-                color: white;
-                font-size: 32pt;
-                border: none;
-                border-left: 4px solid #2c3e50;
-            }
-            QPushButton:hover {
-                background-color: #4CAF50;
-                border-left: 4px solid #4CAF50;
-            }
-            QPushButton:pressed {
-                background-color: #45a049;
-            }
-        """)
-        self.stats_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
+        self.stats_btn = SideBarButton("📊", "Statistics", lambda: self.stacked_widget.setCurrentIndex(3))
         sidebar_layout.addWidget(self.stats_btn)
 
         # Add stretch to push settings button to bottom
         sidebar_layout.addStretch()
 
         # Settings button
-        self.settings_btn = QPushButton("⚙️")
-        self.settings_btn.setFixedSize(80, 80)
-        self.settings_btn.setToolTip("Settings")
-        self.settings_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #34495e;
-                color: white;
-                font-size: 32pt;
-                border: none;
-                border-left: 4px solid #2c3e50;
-            }
-            QPushButton:hover {
-                background-color: #4CAF50;
-                border-left: 4px solid #4CAF50;
-            }
-            QPushButton:pressed {
-                background-color: #45a049;
-            }
-        """)
-        self.settings_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(4))
+        self.settings_btn = SideBarButton("⚙️", "Settings", lambda: self.stacked_widget.setCurrentIndex(4))
         sidebar_layout.addWidget(self.settings_btn)
 
         parent_layout.addWidget(sidebar)
