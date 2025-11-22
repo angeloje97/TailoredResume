@@ -118,7 +118,11 @@ class ResumeApp(QMainWindow):
 
         parent_layout.addWidget(sidebar)
 
+    #region Resume Page
+
     def create_resume_page(self):
+
+
         """Create the resume generation page"""
         page = QWidget()
         main_layout = QVBoxLayout(page)
@@ -213,6 +217,111 @@ class ResumeApp(QMainWindow):
 
         # Add page to stacked widget
         self.stacked_widget.addWidget(page)
+
+    def on_generate(self):
+        """Handle the generate button click"""
+        job_title = self.job_title.text()
+        company_name = self.company_name.text()
+        job_desc = self.job_description.toPlainText()
+
+        # Disable button while processing
+        self.generate_button.setEnabled(False)
+        self.generate_button.setText("Generating...")
+
+        # Reload templates and prompts
+        get_templates()
+        from Utility import resume_prompt, json_template, full_base_resume_text
+
+        current_date_time = datetime.now().strftime("%B %d, %Y %I:%M %p")
+        
+
+        # Build the AI prompt
+        message = f"My resumes:\n{full_base_resume_text}\n"
+        message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
+        message += f"{resume_prompt}"
+        message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
+        message += f"Also make sure to fillout the cover page. The time this request was made is {current_date_time}"
+
+        self.current_prompt = message
+        # Store company name for use in callback
+        self.current_company_name = company_name
+
+        # Create and start worker thread
+        self.worker = AIWorker(message)
+        self.worker.finished.connect(self.on_ai_response)
+        self.worker.error.connect(self.on_ai_error)
+        self.worker.start()
+
+    def on_ai_response(self, response):
+        """Handle successful AI response"""
+        try:
+            from Utility import get_config
+
+            config = get_config()
+
+            data = json.loads(response)
+
+            clear_temp()
+
+            play_notification_sound()
+
+
+            self.generate_button.setText("Processing Documents...")
+            
+            resume_data = expand_list_to_keys(data['Resume'], "")
+            cover_letter_data = data['CoverLetter']
+
+            resume_name = resume_data['File Name']
+            cover_letter_name = cover_letter_data['File Name']
+            #region Editing Meta Data
+
+            current_date_time = datetime.now()
+
+            data['Meta']['Resume Path'] = str(paths['results'] / f"{resume_name}.docx")
+            data['Meta']['Cover Letter Path'] = str(paths['results'] / f"{cover_letter_name}.docx")
+            data['Meta']['Model Used'] = config['Settings']['GPT Model']
+            data['Meta']['Date Created'] = current_date_time.isoformat()
+            data['Meta']['Favorite'] = False
+
+            #endregion
+
+            # clear_temp()
+
+            save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
+            #region Filling Documents
+            
+
+            resume_doc = write_to_docx(resume_template, resume_data)
+            cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
+
+            save_document_temp(resume_doc, resume_name)
+            save_document_temp(cover_letter_doc, cover_letter_name)
+
+            convert_temp_to_pdf()
+
+            copy_temp_to_results()
+
+
+
+            #endregion
+
+            # Re-enable button
+            self.generate_button.setEnabled(True)
+            self.generate_button.setText("Generate Resume")
+
+            print("Resume generated successfully!")
+        except Exception as e:
+            self.on_ai_error(str(e))
+
+    def on_ai_error(self, error_msg):
+        """Handle AI request errors"""
+        print(f"Error: {error_msg}")
+
+        # Re-enable button
+        self.generate_button.setEnabled(True)
+        self.generate_button.setText("Generate Resume")
+
+    #endregion
 
     #region History Page
 
@@ -1494,109 +1603,7 @@ class ResumeApp(QMainWindow):
     #endregion
 
 
-    def on_generate(self):
-        """Handle the generate button click"""
-        job_title = self.job_title.text()
-        company_name = self.company_name.text()
-        job_desc = self.job_description.toPlainText()
-
-        # Disable button while processing
-        self.generate_button.setEnabled(False)
-        self.generate_button.setText("Generating...")
-
-        # Reload templates and prompts
-        get_templates()
-        from Utility import resume_prompt, json_template, full_base_resume_text
-
-        current_date_time = datetime.now().strftime("%B %d, %Y %I:%M %p")
-        
-
-        # Build the AI prompt
-        message = f"My resumes:\n{full_base_resume_text}\n"
-        message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
-        message += f"{resume_prompt}"
-        message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
-        message += f"Also make sure to fillout the cover page. The time this request was made is {current_date_time}"
-
-        self.current_prompt = message
-        # Store company name for use in callback
-        self.current_company_name = company_name
-
-        # Create and start worker thread
-        self.worker = AIWorker(message)
-        self.worker.finished.connect(self.on_ai_response)
-        self.worker.error.connect(self.on_ai_error)
-        self.worker.start()
-
-    def on_ai_response(self, response):
-        """Handle successful AI response"""
-        try:
-            from Utility import get_config
-
-            config = get_config()
-
-            data = json.loads(response)
-
-            clear_temp()
-
-            play_notification_sound()
-
-
-            self.generate_button.setText("Processing Documents...")
-            
-            resume_data = expand_list_to_keys(data['Resume'], "")
-            cover_letter_data = data['CoverLetter']
-
-            resume_name = resume_data['File Name']
-            cover_letter_name = cover_letter_data['File Name']
-            #region Editing Meta Data
-
-            current_date_time = datetime.now()
-
-            data['Meta']['Resume Path'] = str(paths['results'] / f"{resume_name}.docx")
-            data['Meta']['Cover Letter Path'] = str(paths['results'] / f"{cover_letter_name}.docx")
-            data['Meta']['Model Used'] = config['Settings']['GPT Model']
-            data['Meta']['Date Created'] = current_date_time.isoformat()
-            data['Meta']['Favorite'] = False
-
-            #endregion
-
-            # clear_temp()
-
-            save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
-            #region Filling Documents
-            
-
-            resume_doc = write_to_docx(resume_template, resume_data)
-            cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
-
-            save_document_temp(resume_doc, resume_name)
-            save_document_temp(cover_letter_doc, cover_letter_name)
-
-            convert_temp_to_pdf()
-
-            copy_temp_to_results()
-
-
-
-            #endregion
-
-            # Re-enable button
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("Generate Resume")
-
-            print("Resume generated successfully!")
-        except Exception as e:
-            self.on_ai_error(str(e))
-
-    def on_ai_error(self, error_msg):
-        """Handle AI request errors"""
-        print(f"Error: {error_msg}")
-
-        # Re-enable button
-        self.generate_button.setEnabled(True)
-        self.generate_button.setText("Generate Resume")
-
+    
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
