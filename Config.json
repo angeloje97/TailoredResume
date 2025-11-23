@@ -1,6 +1,6 @@
 {
     "Settings": {
-        "Auto Archive Expired Applications": false,
+        "Auto Archive Expired Applications": true,
         "GPT Model": "gpt-5"
     },
     "Resources": {

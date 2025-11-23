@@ -6,6 +6,7 @@ from pygame import mixer
 import json
 import shutil
 import os
+from datetime import datetime
 
 #region Global Variables
 
@@ -158,23 +159,52 @@ def get_archived_datas():
             datas.append(json.load(file))
     return datas
 
+def archive_expired_datas():
+    global paths
 
-def get_config():
-    global base_dir
-    global config
-    full_path = base_dir / "Config.json"
+    expired_datas = []
+    current_date = datetime.now()
 
-    with open(full_path, 'r', encoding="utf-8") as file:
-        config = json.load(file)
-    
-    return config
+    ensure_path_exists(paths['json_data'])
 
-def update_config(config_data):
-    global base_dir
-    full_path = base_dir / "Config.json"
+    json_paths = [p for p in paths['json_data'].glob("*.json") if p.is_file()]
 
-    with open(full_path, 'w', encoding='utf-8') as file:
-        json.dump(config_data, file, indent=4, ensure_ascii=False)
+    for path in json_paths:
+        with open(path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+            
+
+            try:
+                expected_date = data['Job']['Expected Response Date']
+                date = datetime.strptime(expected_date, "%m/%d/%y")
+
+                if current_date > date:
+                    expired_datas.append(path.stem)
+            except Exception as e:
+                print("Does not have expected response date")
+
+    for file_name in expired_datas:
+        archive_json_data(file_name)
+
+def restore_archive_data(json_file_name):
+    global paths
+
+    full_path = paths['json_data'] / f'Archived' / f"{json_file_name}.json"
+    back_up_path = paths['json_data'] / f'Archived' / f"{json_file_name} Data.json"
+
+    destination_path = paths['json_data']
+
+    try:
+        shutil.move(full_path, destination_path)
+        
+    except Exception as e1:
+        print(f"Something went wrong with moving {json_file_name}, using backup now\n{e1}")
+        try:
+            shutil.move(back_up_path, destination_path)
+
+        except Exception as e2:
+            print(f"Something went wrong when moving backup path\n{e2}")
+
 
 def archive_json_data(json_file_name):
     full_path = paths['json_data'] / f"{json_file_name}.json"
@@ -200,24 +230,25 @@ def archive_json_data(json_file_name):
 
             print(f"Trouble moving backup path\n{e2}")
 
-def restore_archive_data(json_file_name):
-    global paths
 
-    full_path = paths['json_data'] / f'Archived' / f"{json_file_name}.json"
-    back_up_path = paths['json_data'] / f'Archived' / f"{json_file_name} Data.json"
+def get_config():
+    global base_dir
+    global config
+    full_path = base_dir / "Config.json"
 
-    destination_path = paths['json_data']
+    with open(full_path, 'r', encoding="utf-8") as file:
+        config = json.load(file)
+    
+    return config
 
-    try:
-        shutil.move(full_path, destination_path)
-        
-    except Exception as e1:
-        print(f"Something went wrong with moving {json_file_name}, using backup now\n{e1}")
-        try:
-            shutil.move(back_up_path, destination_path)
+def update_config(config_data):
+    global base_dir
+    full_path = base_dir / "Config.json"
 
-        except Exception as e2:
-            print(f"Something went wrong when moving backup path\n{e2}")
+    with open(full_path, 'w', encoding='utf-8') as file:
+        json.dump(config_data, file, indent=4, ensure_ascii=False)
+
+
 
 
 def save_document_result(doc: Document, name: str):
@@ -373,3 +404,6 @@ get_config()
 get_json_datas()
 
 copy_temp_to_results()
+
+if(config['Settings']['Auto Archive Expired Applications']):
+    archive_expired_datas()
