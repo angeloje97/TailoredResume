@@ -81,6 +81,7 @@ class ResumeApp(QMainWindow):
         """Create the left sidebar with navigation"""
 
         from Widgets import SideBarButton
+        
         sidebar = QWidget()
         sidebar.setFixedWidth(80)
         sidebar.setStyleSheet("""
@@ -122,75 +123,21 @@ class ResumeApp(QMainWindow):
 
     def create_resume_page(self):
 
-
+        from Widgets import InputText, InputTextBox
         """Create the resume generation page"""
         page = QWidget()
         main_layout = QVBoxLayout(page)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
-        #Company Name Field
-        company_name_label = QLabel("Company Name (Optional):")
-        company_name_label.setStyleSheet("font-size: 14pt; font-weight: bold;")
-        main_layout.addWidget(company_name_label)
-
-        self.company_name = QLineEdit()
-        self.company_name.setPlaceholderText("Enter the company name here...")
-        self.company_name.setMinimumHeight(40)
-        self.company_name.setStyleSheet("""
-            QLineEdit {
-                padding: 8px;
-                font-size: 12pt;
-                border: 2px solid #cccccc;
-                border-radius: 5px;
-            }
-            QLineEdit:focus {
-                border: 2px solid #4CAF50;
-            }
-        """)
-        main_layout.addWidget(self.company_name)
+        # Company Name Field
+        self.company_name = InputText("Company Name (Optional):", main_layout, "Enter the company name here...")
 
         # Job Title field
-        title_label = QLabel("Job Title (Optional):")
-        title_label.setStyleSheet("font-size: 14pt; font-weight: bold;")
-        main_layout.addWidget(title_label)
-
-        self.job_title = QLineEdit()
-        self.job_title.setPlaceholderText("Enter the job title here...")
-        self.job_title.setMinimumHeight(40)
-        self.job_title.setStyleSheet("""
-            QLineEdit {
-                padding: 8px;
-                font-size: 12pt;
-                border: 2px solid #cccccc;
-                border-radius: 5px;
-            }
-            QLineEdit:focus {
-                border: 2px solid #4CAF50;
-            }
-        """)
-        main_layout.addWidget(self.job_title)
+        self.job_title = InputText("Job Title (Optional):", main_layout, "Enter the job title here...")
 
         # Job Description text box
-        desc_label = QLabel("Job Description:")
-        desc_label.setStyleSheet("font-size: 14pt; font-weight: bold;")
-        main_layout.addWidget(desc_label)
-
-        self.job_description = QTextEdit()
-        self.job_description.setPlaceholderText("Paste the entire job description here...")
-        self.job_description.setMinimumHeight(350)
-        self.job_description.setStyleSheet("""
-            QTextEdit {
-                padding: 10px;
-                font-size: 11pt;
-                border: 2px solid #cccccc;
-                border-radius: 5px;
-            }
-            QTextEdit:focus {
-                border: 2px solid #4CAF50;
-            }
-        """)
-        main_layout.addWidget(self.job_description)
+        self.job_description = InputTextBox("Job Description:", main_layout, "Paste the entire job description here...")
 
         # Generate button
         self.generate_button = QPushButton("Generate")
@@ -1150,85 +1097,37 @@ class ResumeApp(QMainWindow):
 
         details_layout.addWidget(action_bar)
 
-        # Job Description
-        job_desc_label = QLabel("Description:")
-        job_desc_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50;")
-        job_desc_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(job_desc_label)
+        #region Details
 
-        job_desc_text = QLabel(f"{description}")
-        job_desc_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
-        job_desc_text.setWordWrap(True)
-        job_desc_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(job_desc_text)
+        from Widgets import LabelDescription
+
+        # Job Description
+
+        LabelDescription("Description:", description, details_layout)
 
         # Match Rating Description
-        match_rating_desc_label = QLabel("Match Rating Description:")
-        match_rating_desc_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50; margin-top: 10px;")
-        match_rating_desc_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(match_rating_desc_label)
 
-        match_rating_desc_text = QLabel(f"{match_rating_reasoning}")
-        match_rating_desc_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
-        match_rating_desc_text.setWordWrap(True)
-        match_rating_desc_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(match_rating_desc_text)
+        LabelDescription("Match Rating Descripton:", match_rating_reasoning, details_layout)
 
         # Responsibilities
-        responsibilities_label = QLabel("Responsibilities:")
-        responsibilities_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50; margin-top: 10px;")
-        responsibilities_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(responsibilities_label)
 
-        responsibilities_text = QLabel(f"{responsibilities}")
-        responsibilities_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
-        responsibilities_text.setWordWrap(True)
-        responsibilities_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(responsibilities_text)
+        LabelDescription("Responsibilities:", responsibilities, details_layout)
 
         # Company Size (horizontal layout)
-        company_size_layout = QHBoxLayout()
-        company_size_layout.setSpacing(10)
-        company_size_layout.setContentsMargins(0, 10, 0, 0)
 
-        company_size_label = QLabel("Company Size:")
-        company_size_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50;")
-        company_size_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        company_size_layout.addWidget(company_size_label)
-
-        company_size_text = QLabel(f"{company_size}")
-        company_size_text.setStyleSheet("font-size: 10pt; color: #555;")
-        company_size_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        company_size_layout.addWidget(company_size_text)
-
-        company_size_layout.addStretch()
-        details_layout.addLayout(company_size_layout)
+        LabelDescription("Company Size:", company_size, details_layout, True)
 
         # Job Quality Description
-        job_quality_desc_label = QLabel("Job Quality Description:")
-        job_quality_desc_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50; margin-top: 10px;")
-        job_quality_desc_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(job_quality_desc_label)
-
-        job_quality_desc_text = QLabel(f"{job_quality_description}")
-        job_quality_desc_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
-        job_quality_desc_text.setWordWrap(True)
-        job_quality_desc_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(job_quality_desc_text)
+        
+        LabelDescription("Job Quality Description:", job_quality_description, details_layout)
 
         # Motive
-        motive_label = QLabel("Why Work Here:")
-        motive_label.setStyleSheet("font-weight: bold; font-size: 11pt; color: #2c3e50; margin-top: 10px;")
-        motive_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(motive_label)
 
-        motive_text = QLabel(f"{motive}")
-        motive_text.setStyleSheet("font-size: 10pt; color: #555; margin-left: 10px;")
-        motive_text.setWordWrap(True)
-        motive_text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        details_layout.addWidget(motive_text)
+        LabelDescription("Why Work Here:", motive, details_layout)
 
         item_layout.addWidget(details_widget)
+
+        #endregion
 
         # Store reference to details widget for toggling
         item_widget.details_widget = details_widget
@@ -1300,8 +1199,8 @@ class ResumeApp(QMainWindow):
                 item.widget().deleteLater()
 
         # Load archived data
-        archived_datas = get_archived_datas()
-
+        archived_datas = sorted(get_archived_datas(), key=lambda data: data['Meta']['Date Created'], reverse=True )
+        
         # Update title with count
         self.archive_title_label.setText(f"Archive ({len(archived_datas)} Results)")
 
