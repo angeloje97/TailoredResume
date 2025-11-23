@@ -18,10 +18,12 @@ The application uses a PySide6 GUI to collect job information and leverages Open
 
 - **AI-Powered Tailoring**: Uses GPT models to analyze job descriptions and customize resumes
 - **Multi-Format Output**: Generates both .docx and PDF versions of resumes and cover letters
-- **Application Tracking**: History page with filtering by match rating, job quality, and tech stack
+- **Application Tracking**: History page with filtering by match rating, job quality, date range, and tech stack
+- **Favorites System**: Mark and filter favorite applications for quick access
+- **Archive Management**: Dedicated archive page to organize and review old applications
 - **Configurable Models**: Choose from multiple GPT models (gpt-5, gpt-5-mini, etc.)
 - **Audio Notifications**: Sound alert when document generation completes
-- **Archive System**: Organize old applications by archiving them
+- **Document Regeneration**: Regenerate resume and cover letter from any saved application
 
 ## Prerequisites
 
@@ -259,17 +261,38 @@ python Source/Main.py
 ### Viewing Application History
 
 Navigate to the **Files** page (🗂️ icon) to:
-- View all generated applications
-- Filter by match rating, job quality, or search term
-- See today's applications count
-- Expand items to view job details, responsibilities, and quality ratings
+- View all active (non-archived) applications
+- Filter by match rating, job quality, date range, or search term
+- See total applications count and today's applications count
+- Expand items to view job details, responsibilities, tech stack, and quality ratings
+- Mark applications as favorites with the ⭐ button
+- Filter to show only favorited applications
 - Open the Results folder directly
+- Regenerate documents from saved data
 - Archive old applications
 
 **History filters:**
-- **Search bar**: Filter by position, company, or tech stack
+- **Search bar**: Filter by position, company, or tech stack (case-insensitive)
 - **Min Rating**: Filter by match rating (1-10)
 - **Min Quality**: Filter by job quality assessment (1-10)
+- **Date Range**: Filter by Today, Last 3/7/30 Days, or Any day
+- **⭐ Favorites**: Show only favorited applications
+
+### Managing Archived Applications
+
+Navigate to the **Archive** page (📦 icon) to:
+- View all archived applications
+- Use the same filtering capabilities as the Files page
+- Expand items to review archived application details
+- Regenerate documents from archived data
+- Unarchive applications to move them back to the Files page
+- Keep your active applications list focused and organized
+
+**Archiving workflow:**
+1. On the Files page, expand an application you want to archive
+2. Click the 📦 Archive button
+3. The application moves to the Archive page
+4. To restore, go to Archive page and click the ↩️ Unarchive button
 
 ### Configuring Settings
 
@@ -297,7 +320,8 @@ Settings are saved to `Config.json`.
 ├── Source/                   # Python source code
 │   ├── Main.py              # GUI application (entry point)
 │   ├── Utility.py           # Document processing
-│   └── Agent.py             # OpenAI API integration
+│   ├── Agent.py             # OpenAI API integration
+│   └── Widgets.py           # Reusable UI components
 ├── .env                      # API keys (create this)
 ├── Config.json              # Application settings
 ├── requirements.txt         # Python dependencies
@@ -377,14 +401,45 @@ Simply add more .docx files to the `BaseResumes/` folder. The application will:
 
 This is useful if you have different resume versions for different career paths.
 
+### Using Favorites
+
+Mark important applications as favorites for quick access:
+
+**To mark as favorite:**
+1. Go to Files page (🗂️) or Archive page (📦)
+2. Expand the application
+3. Click the ⭐ button (turns green when favorited)
+
+**To filter favorites:**
+1. Check the "⭐ Favorites" checkbox at the top of the page
+2. Only favorited applications will be displayed
+3. Combine with other filters (search, rating, quality, date)
+
+**Use cases:**
+- Track high-priority applications you're actively pursuing
+- Mark applications with great match ratings for follow-up
+- Highlight companies you're most interested in
+- Quickly access applications you want to tailor further
+
 ### Archiving Applications
 
 **Manual archiving:**
-1. Go to Files page
-2. Click the 📦 icon on any history item
-3. Confirm archiving
+1. Go to Files page (🗂️)
+2. Expand the application you want to archive
+3. Click the 📦 Archive button
+4. The application is moved to `Resources/Json Data/Archived/`
 
-Archived items are moved to `Resources/Json Data/Archived/` and hidden from the main history view.
+**Viewing archived applications:**
+1. Navigate to the Archive page (📦)
+2. View all archived applications with the same filtering options
+3. Expand items to review details
+4. Click ↩️ Unarchive to restore an application to the Files page
+
+**Benefits of archiving:**
+- Keep your active Files page focused on current applications
+- Maintain historical records without cluttering the main view
+- Easily filter between active and archived applications
+- Quickly unarchive if you need to reference or regenerate documents
 
 ## Tips for Best Results
 
@@ -396,9 +451,17 @@ Archived items are moved to `Resources/Json Data/Archived/` and hidden from the 
 
 4. **Iterate on Templates**: Adjust the Resume Prompt.md instructions based on results to improve future generations.
 
-5. **Track Match Ratings**: Use the match rating to prioritize which applications to pursue.
+5. **Track Match Ratings**: Use the match rating to prioritize which applications to pursue. The AI calculates this based on tech stack overlap, similar responsibilities, and experience level match.
 
-6. **Customize Per Application**: The company and job title fields help the AI understand context, even if optional.
+6. **Use Favorites Strategically**: Mark high-match applications (8+) or companies you're most interested in to easily track your top opportunities.
+
+7. **Archive Old Applications**: Keep your Files page organized by archiving applications after you've heard back or decided not to pursue them.
+
+8. **Leverage Document Regeneration**: If you want to try a different approach, you can regenerate documents from any saved application without re-entering the job description.
+
+9. **Customize Per Application**: The company and job title fields help the AI understand context, even if optional.
+
+10. **Monitor Date Filters**: Use the "Today" filter to quickly see how many applications you've generated each day and maintain application momentum.
 
 ## Security Notes
 

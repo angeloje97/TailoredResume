@@ -23,7 +23,8 @@ This is a Python desktop application for tailoring resumes using AI. It features
 ├── Source/          # Python source code
 │   ├── Main.py      # PySide6 GUI application (entry point)
 │   ├── Utility.py   # Document processing utilities
-│   └── Agent.py     # OpenAI API integration
+│   ├── Agent.py     # OpenAI API integration
+│   └── Widgets.py   # Reusable UI component helpers
 ├── .env             # Environment variables (API keys) - DO NOT COMMIT
 ├── Config.json      # Application settings (GPT model, auto-archive, etc.)
 ├── requirements.txt # Python dependencies
@@ -35,21 +36,24 @@ This is a Python desktop application for tailoring resumes using AI. It features
 
 ### Core Modules
 
-**Main.py** - PySide6 desktop application with four-page interface:
+**Main.py** - PySide6 desktop application with five-page interface:
 - **AIWorker class**: QThread worker for async AI requests without blocking UI
   - Creates separate event loop for async operations
   - Emits `finished` signal with response or `error` signal on failure
   - Keeps GUI responsive during API calls
-- **ResumeApp class**: Main window with sidebar navigation (📄 Resume, 🗂️ Files, 📊 Statistics, ⚙️ Settings)
+- **ResumeApp class**: Main window with sidebar navigation (📄 Resume, 🗂️ Files, 📦 Archive, 📊 Statistics, ⚙️ Settings)
 - **Page 0 - Resume generation**: Input fields for company name, job title, and job description
 - **Page 1 - Files/History**: Displays generated resumes with filtering (search, match rating, job quality, date range, favorites)
   - Expandable history items showing job details, responsibilities, company size, quality ratings
   - Archive functionality to move JSON files to Archived subfolder
-  - Action buttons in expanded view: open folder (📁), generate documents (📝), favorite (⭐)
+  - Action buttons in expanded view: open folder (📁), generate documents (📝), favorite (⭐), archive (📦)
   - Favorite button shows green background when favorited, white background when not favorited
   - Favorite filter checkbox (⭐ Favorites) to show only favorited items
-- **Page 2 - Statistics**: Placeholder for charts and analytics
-- **Page 3 - Settings**: Configure GPT model and auto-archive behavior (saved to Config.json)
+- **Page 2 - Archive**: Shows archived applications with same filtering capabilities as Files page
+  - Displays applications moved to Resources/Json Data/Archived/ folder
+  - Action buttons: open folder (📁), generate documents (📝), unarchive (↩️)
+- **Page 3 - Statistics**: Placeholder for charts and analytics
+- **Page 4 - Settings**: Configure GPT model and auto-archive behavior (saved to Config.json)
 - **UI Framework**: Uses QStackedWidget for page switching, custom styled widgets with emojis
 - **Generate button handler**: `on_generate()` creates AIWorker thread, disables button, updates text to "Generating..." then "Processing Documents..."
 - **Response handlers**: `on_ai_response()` processes JSON, saves data, generates resume/cover letter, converts to PDF, plays notification sound; `on_ai_error()` handles errors
@@ -95,6 +99,13 @@ This is a Python desktop application for tailoring resumes using AI. It features
 - **Single-turn conversations**: Each request is stateless (no conversation history)
 - **Threading requirement**: Must be called from QThread worker (AIWorker) to avoid blocking GUI
 - **API format**: Uses `chat.completions.create()` with role "user" and returns `choices[0].message.content`
+
+**Widgets.py** - Reusable UI component helpers for reducing boilerplate:
+- **SideBarButton(label, tooltip, on_click)**: Creates styled sidebar navigation buttons (80x80, emoji labels, green hover)
+- **InputText(label, layout_obj, placeholder, height)**: Creates labeled QLineEdit with consistent styling, adds both label and input to layout
+- **InputTextBox(label, layout_obj, placeholder, height)**: Creates labeled QTextEdit for multi-line input, optional label
+- **LabelDescription(label_text, description_text, layout_obj, inline)**: Creates label-description pairs for history items, supports inline (horizontal) or stacked layout
+- All widgets use consistent color scheme (#4CAF50 green for focus/hover, #2c3e50 dark blue backgrounds)
 
 ### Path Configuration
 
@@ -237,6 +248,11 @@ clear_temp()  # Removes all temporary files
 json_list = get_json_datas()  # Returns list of parsed JSON objects (excludes Archived subfolder)
 ```
 
+**get_archived_datas()** - Load all archived JSON files:
+```python
+archived_list = get_archived_datas()  # Returns list of JSON objects from Archived subfolder
+```
+
 **archive_json_data(json_file_name)** - Archive a history item:
 ```python
 archive_json_data("Google Software Engineer")  # Moves to Resources/Json Data/Archived/
@@ -374,6 +390,23 @@ def on_response_callback(response_text):
 2. Add to stacked widget with `self.stacked_widget.addWidget(page)`
 3. Create sidebar button that calls `setCurrentIndex()` with page index
 
+**Using Widgets.py helpers**:
+```python
+from Widgets import SideBarButton, InputText, InputTextBox, LabelDescription
+
+# Create sidebar button
+btn = SideBarButton("📄", "Resume Generator", lambda: self.stacked_widget.setCurrentIndex(0))
+
+# Create labeled input field
+company_input = InputText("Company Name", layout, placeholder="Enter company name", height=40)
+
+# Create labeled text area
+description_input = InputTextBox("Job Description", layout, placeholder="Paste job description", height=350)
+
+# Create label-description pair (inline or stacked)
+LabelDescription("Match Rating:", "8.5/10", layout, inline=True)
+```
+
 **History page filtering**:
 - Search bar filters by position, company, or tech stack (case-insensitive)
 - Min rating dropdown filters by match rating (1-10)
@@ -495,6 +528,14 @@ archive_json_data(file_name)  # Moves "Software Engineer Google.json" to Archive
 
 # get_json_datas() automatically excludes archived items
 datas = get_json_datas()  # Only returns non-archived JSON files
+
+# Get archived items (for Archive page)
+archived = get_archived_datas()  # Returns list of JSON objects from Archived subfolder
+
+# Unarchive an item (move back to main folder)
+archived_path = paths['json_data'] / 'Archived' / f"{file_name}.json"
+destination_path = paths['json_data'] / f"{file_name}.json"
+shutil.move(archived_path, destination_path)
 ```
 
 **History filtering examples**:
