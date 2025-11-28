@@ -249,8 +249,6 @@ def update_config(config_data):
         json.dump(config_data, file, indent=4, ensure_ascii=False)
 
 
-
-
 def save_document_result(doc: Document, name: str):
     global paths
 

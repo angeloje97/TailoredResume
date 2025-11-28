@@ -139,6 +139,34 @@ class ResumeApp(QMainWindow):
         # Job Description text box
         self.job_description = InputTextBox("Job Description:", main_layout, "Paste the entire job description here...")
 
+        # Application Link field
+        self.application_link = InputText("Application Link (Optional):", main_layout, "Paste the job posting URL here...")
+
+        # Save Submission checkbox
+        self.save_submission_checkbox = QCheckBox("Save Submission (Not Applying - Save for Reference Only)")
+        self.save_submission_checkbox.setMinimumHeight(40)
+        self.save_submission_checkbox.setStyleSheet("""
+            QCheckBox {
+                font-size: 11pt;
+                color: #333;
+                padding: 8px;
+                background-color: #fff3e0;
+                border: 2px solid #ff9800;
+                border-radius: 8px;
+                padding-left: 12px;
+            }
+            QCheckBox:hover {
+                background-color: #ffe0b2;
+                border: 2px solid #f57c00;
+            }
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+            }
+        """)
+        self.save_submission_checkbox.setToolTip("Check this if you're NOT applying but want to save this job for reference only. Documents won't be generated.")
+        main_layout.addWidget(self.save_submission_checkbox)
+
         # Generate button
         self.generate_button = QPushButton("Generate")
         self.generate_button.setMinimumHeight(50)
@@ -180,7 +208,7 @@ class ResumeApp(QMainWindow):
         from Utility import resume_prompt, json_template, full_base_resume_text
 
         current_date_time = datetime.now().strftime("%B %d, %Y %I:%M %p")
-        
+
 
         # Build the AI prompt
         message = f"My resumes:\n{full_base_resume_text}\n"
@@ -190,8 +218,7 @@ class ResumeApp(QMainWindow):
         message += f"Also make sure to fillout the cover page. The time this request was made is {current_date_time}"
 
         self.current_prompt = message
-        # Store company name for use in callback
-        self.current_company_name = company_name
+        # Store company name and save_submission flag for use in callback
 
         # Create and start worker thread
         self.worker = AIWorker(message)
@@ -213,8 +240,17 @@ class ResumeApp(QMainWindow):
             play_notification_sound()
 
 
-            self.generate_button.setText("Processing Documents...")
-            
+            # Check if this is a "Save Submission" (not applying)
+            application_link = self.application_link.text()
+            save_submission = self.save_submission_checkbox.isChecked()
+
+            if save_submission:
+                # Only save JSON, skip document generation
+                self.generate_button.setText("Saving Data...")
+            else:
+                # Normal flow with document generation
+                self.generate_button.setText("Processing Documents...")
+
             resume_data = expand_list_to_keys(data['Resume'], "")
             cover_letter_data = data['CoverLetter']
 
@@ -232,31 +268,44 @@ class ResumeApp(QMainWindow):
 
             #endregion
 
+            #region Editing Job data
+            
+            data['Job']['Save Submission'] = save_submission
+            data['Job']['Application Link'] = application_link
+
+            #endregion
+
             # clear_temp()
 
             save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
-            #region Filling Documents
-            
 
-            resume_doc = write_to_docx(resume_template, resume_data)
-            cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
-
-            save_document_temp(resume_doc, resume_name)
-            save_document_temp(cover_letter_doc, cover_letter_name)
-
-            convert_temp_to_pdf()
-
-            copy_temp_to_results()
+            # Only generate documents if NOT a "Save Submission"
+            if not save_submission:
+                #region Filling Documents
 
 
+                resume_doc = write_to_docx(resume_template, resume_data)
+                cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
 
-            #endregion
+                save_document_temp(resume_doc, resume_name)
+                save_document_temp(cover_letter_doc, cover_letter_name)
+
+                convert_temp_to_pdf()
+
+                copy_temp_to_results()
+
+
+
+                #endregion
 
             # Re-enable button
             self.generate_button.setEnabled(True)
             self.generate_button.setText("Generate Resume")
 
-            print("Resume generated successfully!")
+            if save_submission:
+                print("Job saved successfully (no documents generated - Save Submission mode)")
+            else:
+                print("Resume generated successfully!")
         except Exception as e:
             self.on_ai_error(str(e))
 
@@ -445,6 +494,34 @@ class ResumeApp(QMainWindow):
         self.favorite_filter_checkbox.stateChanged.connect(self.filter_history_items)
         filter_row.addWidget(self.favorite_filter_checkbox, stretch=1)
 
+        # Show Saved filter checkbox
+        self.show_saved_checkbox = QCheckBox("📋 Saved")
+        self.show_saved_checkbox.setMinimumHeight(40)
+        self.show_saved_checkbox.setStyleSheet("""
+            QCheckBox {
+                font-size: 12pt;
+                color: #333;
+                padding: 10px;
+                background-color: white;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 15px;
+                margin-bottom: 15px;
+                padding-left: 12px;
+            }
+            QCheckBox:hover {
+                border: 2px solid #ff9800;
+                background-color: #fff3e0;
+            }
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+            }
+        """)
+        self.show_saved_checkbox.setToolTip("Show only saved submissions (not applying)")
+        self.show_saved_checkbox.stateChanged.connect(self.filter_history_items)
+        filter_row.addWidget(self.show_saved_checkbox, stretch=1)
+
         page_layout.addLayout(filter_row)
 
         # Scrollable area for history items
@@ -506,7 +583,8 @@ class ResumeApp(QMainWindow):
                 'match_rating': float(job_data.get('Match Rating', 0)),
                 'job_quality': float(job_data.get('Job Quality', 0)),
                 'date_created': data['Meta']['Date Created'],
-                'favorite': data['Meta'].get('Favorite', False)
+                'favorite': data['Meta'].get('Favorite', False),
+                'save_submission': job_data.get('Save Submission', False)
             })
 
         # Add stretch to push content to top
@@ -518,6 +596,7 @@ class ResumeApp(QMainWindow):
         self.min_quality_combo.setCurrentIndex(0)
         self.date_filter_combo.setCurrentIndex(0)
         self.favorite_filter_checkbox.setChecked(False)
+        self.show_saved_checkbox.setChecked(False)
 
         # Switch to files page
         self.stacked_widget.setCurrentIndex(1)
@@ -562,6 +641,9 @@ class ResumeApp(QMainWindow):
         # Get favorite filter
         favorites_only = self.favorite_filter_checkbox.isChecked()
 
+        # Get show saved filter
+        show_saved_only = self.show_saved_checkbox.isChecked()
+
         # Count visible items
         visible_count = 0
         visible_today_count = 0
@@ -596,8 +678,14 @@ class ResumeApp(QMainWindow):
             else:
                 favorite_match = True  # Show all if not filtering by favorites
 
+            # Check if save submission filter matches
+            if show_saved_only:
+                saved_match = item_data['save_submission']
+            else:
+                saved_match = True  # Show all if not filtering by saved submissions
+
             # Show item only if all conditions are met
-            is_visible = text_match and rating_match and quality_match and date_match and favorite_match
+            is_visible = text_match and rating_match and quality_match and date_match and favorite_match and saved_match
             item_data['widget'].setVisible(is_visible)
 
             # Update counts
@@ -650,6 +738,160 @@ class ResumeApp(QMainWindow):
 
     #endregion
 
+    def update_date_applied(self, data, item_widget):
+        """Update the Date Applied for a history item"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit
+        from datetime import datetime
+
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Update Date Applied")
+        dialog.setMinimumWidth(400)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Title
+        title_label = QLabel("Update Date Applied")
+        title_label.setStyleSheet("font-size: 14pt; font-weight: bold;")
+        layout.addWidget(title_label)
+
+        # Current date info
+        current_date = data['Job']['Date Applied']
+        info_label = QLabel(f"Current Date: {current_date}")
+        info_label.setStyleSheet("font-size: 11pt; color: #666;")
+        layout.addWidget(info_label)
+
+        # New date input
+        date_label = QLabel("New Date (mm/dd/yy):")
+        date_label.setStyleSheet("font-size: 11pt; font-weight: bold;")
+        layout.addWidget(date_label)
+
+        date_input = QLineEdit()
+        date_input.setPlaceholderText("e.g., 01/15/25")
+        date_input.setText(current_date)
+        date_input.setMinimumHeight(40)
+        date_input.setStyleSheet("""
+            QLineEdit {
+                padding: 10px;
+                font-size: 11pt;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4CAF50;
+            }
+        """)
+        layout.addWidget(date_input)
+
+        # Quick select buttons
+        quick_select_layout = QHBoxLayout()
+        quick_select_layout.setSpacing(8)
+
+        today_btn = QPushButton("Today")
+        today_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e3f2fd;
+                color: #1976d2;
+                font-size: 10pt;
+                font-weight: bold;
+                border: 1px solid #2196F3;
+                border-radius: 6px;
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background-color: #bbdefb;
+            }
+        """)
+        today_btn.clicked.connect(lambda: date_input.setText(datetime.now().strftime("%m/%d/%y")))
+        quick_select_layout.addWidget(today_btn)
+
+        quick_select_layout.addStretch()
+        layout.addLayout(quick_select_layout)
+
+        # Button row
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setMinimumHeight(40)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f5f5f5;
+                color: #333;
+                font-size: 11pt;
+                font-weight: bold;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
+        cancel_btn.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_btn)
+
+        save_btn = QPushButton("Update")
+        save_btn.setMinimumHeight(40)
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-size: 11pt;
+                font-weight: bold;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        save_btn.clicked.connect(dialog.accept)
+        button_layout.addWidget(save_btn)
+
+        layout.addLayout(button_layout)
+
+        # Show dialog and handle result
+        if dialog.exec():
+            new_date = date_input.text().strip()
+
+            # Validate date format (basic validation)
+            try:
+                datetime.strptime(new_date, "%m/%d/%y")
+
+                # Update the data
+                data['Job']['Date Applied'] = new_date
+
+                # Save the updated JSON
+                from Utility import save_json_obj, expand_list_to_keys
+                save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
+
+                print(f"Updated Date Applied to {new_date} for: {data['Job']['Position Title']} at {data['Job']['Company Name']}")
+
+                # Refresh the history page to show updated date
+                self.show_files_page()
+
+            except ValueError:
+                from PySide6.QtWidgets import QMessageBox
+                error_box = QMessageBox()
+                error_box.setIcon(QMessageBox.Icon.Warning)
+                error_box.setWindowTitle("Invalid Date Format")
+                error_box.setText("Please enter a valid date in mm/dd/yy format.")
+                error_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+                error_box.exec()
+
     def open_result_folder(self, data):
         """Open the Results folder containing the resume and cover letter files"""
         import os
@@ -666,7 +908,6 @@ class ResumeApp(QMainWindow):
 
     def generate_documents(self, data):
         """Generate documents (resume and cover letter) for a history item"""
-        from PySide6.QtWidgets import QMessageBox
         # Placeholder for generate documents functionality
 
         clear_temp()
@@ -698,6 +939,8 @@ class ResumeApp(QMainWindow):
         salary = job_data.get('Salary', None)
         match_rating = float(job_data.get('Match Rating', 0))
         job_quality = float(job_data.get('Job Quality', 5))
+        save_submission = job_data.get('Save Submission', False)
+        application_link = job_data.get('Application Link', '')
 
         current_date = datetime.now()
 
@@ -871,6 +1114,21 @@ class ResumeApp(QMainWindow):
 
         header_layout.addWidget(date_label)
 
+        # Save Submission badge (always created, visibility controlled)
+        save_submission_badge = QLabel("📋 Saved")
+        save_submission_badge.setStyleSheet("""
+            font-size: 9pt;
+            color: #ff6f00;
+            font-weight: 600;
+            background-color: #fff3e0;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 2px solid #ff9800;
+        """)
+        save_submission_badge.setToolTip("This is a saved submission (not applying)")
+        save_submission_badge.setVisible(save_submission)
+        header_layout.addWidget(save_submission_badge)
+
         # Archive button with file-box icon
         archive_btn = QPushButton("📦")
         archive_btn.setFixedSize(36, 36)
@@ -950,6 +1208,8 @@ class ResumeApp(QMainWindow):
         details_widget.mousePressEvent = lambda e: e.accept()
 
         # Action bar at the top of expanded section
+        from Widgets import ActionBarButton, ToggleActionBarButton
+
         action_bar = QWidget()
         action_bar.setStyleSheet("""
             QWidget {
@@ -965,111 +1225,46 @@ class ResumeApp(QMainWindow):
         # Add stretch to push icons to the right
         action_bar_layout.addStretch()
 
-        # Folder icon button (open folder)
-        folder_btn = QPushButton("📁")
-        folder_btn.setFixedSize(32, 32)
-        folder_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        folder_btn.setToolTip("Open in folder")
-        folder_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-                font-size: 14pt;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: #fff3e0;
-                border: 1px solid #ff9800;
-            }
-            QPushButton:pressed {
-                background-color: #ffe0b2;
-            }
-        """)
+        # Update Date Applied button
 
+        def on_calendar_click(event):
+            event.accept()
+            self.update_date_applied(data, item_widget)
+
+        calendar_btn = ActionBarButton("📅", "Update Date Applied", on_calendar_click,
+                                       hover_color="#e8f5e9", hover_border="#4CAF50", pressed_color="#c8e6c9")
+        action_bar_layout.addWidget(calendar_btn)
+
+        # Application Link button (if provided)
+        if application_link:
+            def on_link_click(event):
+                event.accept()
+                import webbrowser
+                webbrowser.open(application_link)
+
+            link_btn = ActionBarButton("🔗", "Open Application Link", on_link_click)
+            action_bar_layout.addWidget(link_btn)
+
+        # Folder icon button (open folder)
         def on_folder_click(event):
             event.accept()
             self.open_result_folder(data)
 
-        folder_btn.mousePressEvent = on_folder_click
+        folder_btn = ActionBarButton("📁", "Open in folder", on_folder_click,
+                                     hover_color="#fff3e0", hover_border="#ff9800", pressed_color="#ffe0b2")
         action_bar_layout.addWidget(folder_btn)
 
         # Generate Documents icon button
-        generate_docs_btn = QPushButton("📝")
-        generate_docs_btn.setFixedSize(32, 32)
-        generate_docs_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        generate_docs_btn.setToolTip("Generate Documents")
-        generate_docs_btn.setStyleSheet("""
-            QPushButton {
-                background-color: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-                font-size: 14pt;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: #e3f2fd;
-                border: 1px solid #2196F3;
-            }
-            QPushButton:pressed {
-                background-color: #bbdefb;
-            }
-        """)
-
         def on_generate_docs_click(event):
             event.accept()
             self.generate_documents(data)
 
-        generate_docs_btn.mousePressEvent = on_generate_docs_click
+        generate_docs_btn = ActionBarButton("📝", "Generate Documents", on_generate_docs_click)
         action_bar_layout.addWidget(generate_docs_btn)
 
         # Favorite icon button
-        favorite_btn = QPushButton("⭐")
-        favorite_btn.setFixedSize(32, 32)
-        favorite_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        favorite_btn.setToolTip("Favorite")
-
-        # Set initial style based on favorite status
         is_favorite = data['Meta'].get('Favorite', False)
-
-        def update_favorite_style(is_fav):
-            if is_fav:
-                favorite_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #4CAF50;
-                        border: 1px solid #4CAF50;
-                        border-radius: 6px;
-                        font-size: 14pt;
-                        padding: 0px;
-                    }
-                    QPushButton:hover {
-                        background-color: #45a049;
-                        border: 1px solid #45a049;
-                    }
-                    QPushButton:pressed {
-                        background-color: #3d8b40;
-                    }
-                """)
-            else:
-                favorite_btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: white;
-                        border: 1px solid #e0e0e0;
-                        border-radius: 6px;
-                        font-size: 14pt;
-                        padding: 0px;
-                    }
-                    QPushButton:hover {
-                        background-color: #fffde7;
-                        border: 1px solid #ffc107;
-                    }
-                    QPushButton:pressed {
-                        background-color: #fff9c4;
-                    }
-                """)
-
-        # Set initial style
-        update_favorite_style(is_favorite)
+        favorite_btn, update_favorite_style = ToggleActionBarButton("⭐", "Favorite", is_favorite)
 
         def on_favorite_click(event):
             event.accept()
@@ -1094,6 +1289,36 @@ class ResumeApp(QMainWindow):
 
         favorite_btn.mousePressEvent = on_favorite_click
         action_bar_layout.addWidget(favorite_btn)
+
+        # Save Submission toggle button
+        is_save_submission = data['Job'].get('Save Submission', False)
+        save_submission_btn, update_save_submission_style = ToggleActionBarButton(
+            "📋", "Toggle Save Submission (Not Applying)", is_save_submission,
+            active_bg="#ff9800", active_border="#ff9800",
+            active_hover="#f57c00", active_pressed="#ef6c00",
+            inactive_hover="#fff3e0", inactive_border="#ff9800", inactive_pressed="#ffe0b2"
+        )
+
+        def on_save_submission_click(event):
+            event.accept()
+            # Toggle save submission status
+            current_save_submission = data['Job'].get('Save Submission', False)
+            data['Job']['Save Submission'] = not current_save_submission
+
+            # Update the JSON file
+            from Utility import save_json_obj, expand_list_to_keys
+            save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
+
+            # Update button style
+            update_save_submission_style(data['Job']['Save Submission'])
+
+            # Update badge visibility in header
+            save_submission_badge.setVisible(data['Job']['Save Submission'])
+
+            print(f"{'Save Submission enabled' if data['Job']['Save Submission'] else 'Save Submission disabled'}: {data['Job']['Position Title']} at {data['Job']['Company Name']}")
+
+        save_submission_btn.mousePressEvent = on_save_submission_click
+        action_bar_layout.addWidget(save_submission_btn)
 
         details_layout.addWidget(action_bar)
 

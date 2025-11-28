@@ -66,7 +66,9 @@
         "Match Rating": "Rating out of 10 and only the numerator. In number type and it can be a float value",
         "Match Rating Description": "Reason for choosing the match rating",
         "Date Applied" : "mm/dd/yy",
-        "Expected Response Date": "mm/dd/yy of when I should stop waiting for a response. Keep in mind the date posted (if it was given in the prompt)"
+        "Expected Response Date": "mm/dd/yy of when I should stop waiting for a response. Keep in mind the date posted (if it was given in the prompt)",
+        "Application Link": "",
+        "Save Submission": false
     }
     
 } 
