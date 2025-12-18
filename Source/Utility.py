@@ -394,9 +394,6 @@ get_templates()
 get_resume_full_resume_text()
 
 # Populate base resume texts
-
-#endregion
-
 get_config()
 
 get_json_datas()
@@ -405,3 +402,5 @@ copy_temp_to_results()
 
 if(config['Settings']['Auto Archive Expired Applications']):
     archive_expired_datas()
+
+#endregion

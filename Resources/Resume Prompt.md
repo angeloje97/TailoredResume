@@ -55,3 +55,4 @@
      - -~2 to -~4 points: Government/defense jobs requiring active security clearance (Secret, Top Secret, TS/SCI) that I do not currently hold. Subtract more points for higher clearance levels as they are difficult to obtain without sponsorship and can take 6-12+ months.
      - +~0.5 points: Government jobs that are willing to sponsor clearance or accept candidates eligible for clearance (U.S. citizenship may be sufficient).
      - They don't have to be whole numbers. They can be a float.
+     - ~-3 Points if it requires me to be onsite or requires me to be in another country.

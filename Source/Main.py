@@ -343,186 +343,19 @@ class ResumeApp(QMainWindow):
         self.history_title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
         page_layout.addWidget(self.history_title_label)
 
-        # Filter row with search bar and min rating dropdown
-        filter_row = QHBoxLayout()
-        filter_row.setSpacing(10)
+        # Create filter bar using reusable component
+        from Widgets import FilterBar
+        filters = FilterBar(on_filter_changed=self.filter_history_items,
+                           include_favorites=True, include_saved=True)
+        page_layout.addLayout(filters['layout'])
 
-        # Search bar
-        self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search by position, company, or tech stack...")
-        self.search_bar.setMinimumHeight(40)
-        self.search_bar.setStyleSheet("""
-            QLineEdit {
-                padding: 10px;
-                font-size: 12pt;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                background-color: white;
-                margin-top: 15px;
-                margin-bottom: 15px;
-            }
-            QLineEdit:focus {
-                border: 2px solid #4CAF50;
-            }
-        """)
-        self.search_bar.textChanged.connect(self.filter_history_items)
-        filter_row.addWidget(self.search_bar, stretch=3)
-
-        # Min Rating dropdown
-        self.min_rating_combo = QComboBox()
-        self.min_rating_combo.addItems(["All Ratings", "1+", "2+", "3+", "4+", "5+", "6+", "7+", "8+", "9+", "10"])
-        self.min_rating_combo.setMinimumHeight(40)
-        self.min_rating_combo.setMinimumWidth(150)
-        self.min_rating_combo.setStyleSheet("""
-            QComboBox {
-                padding: 10px;
-                font-size: 12pt;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                background-color: white;
-                margin-top: 15px;
-                margin-bottom: 15px;
-            }
-            QComboBox:focus {
-                border: 2px solid #4CAF50;
-            }
-            QComboBox::drop-down {
-                border: none;
-                width: 30px;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #666;
-                margin-right: 10px;
-            }
-        """)
-        self.min_rating_combo.currentTextChanged.connect(self.filter_history_items)
-        filter_row.addWidget(self.min_rating_combo, stretch=1)
-
-        # Min Job Quality dropdown
-        self.min_quality_combo = QComboBox()
-        self.min_quality_combo.addItems(["All Quality", "1+", "2+", "3+", "4+", "5+", "6+", "7+", "8+", "9+", "10"])
-        self.min_quality_combo.setMinimumHeight(40)
-        self.min_quality_combo.setMinimumWidth(150)
-        self.min_quality_combo.setStyleSheet("""
-            QComboBox {
-                padding: 10px;
-                font-size: 12pt;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                background-color: white;
-                margin-top: 15px;
-                margin-bottom: 15px;
-            }
-            QComboBox:focus {
-                border: 2px solid #4CAF50;
-            }
-            QComboBox::drop-down {
-                border: none;
-                width: 30px;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #666;
-                margin-right: 10px;
-            }
-        """)
-        self.min_quality_combo.currentTextChanged.connect(self.filter_history_items)
-        filter_row.addWidget(self.min_quality_combo, stretch=1)
-
-        # Date filter dropdown
-        self.date_filter_combo = QComboBox()
-        self.date_filter_combo.addItems(["Any day", "Today", "Last 3 Days", "Last 7 Days", "Last 30 Days"])
-        self.date_filter_combo.setMinimumHeight(40)
-        self.date_filter_combo.setMinimumWidth(150)
-        self.date_filter_combo.setStyleSheet("""
-            QComboBox {
-                padding: 10px;
-                font-size: 12pt;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                background-color: white;
-                margin-top: 15px;
-                margin-bottom: 15px;
-            }
-            QComboBox:focus {
-                border: 2px solid #4CAF50;
-            }
-            QComboBox::drop-down {
-                border: none;
-                width: 30px;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #666;
-                margin-right: 10px;
-            }
-        """)
-        self.date_filter_combo.currentTextChanged.connect(self.filter_history_items)
-        filter_row.addWidget(self.date_filter_combo, stretch=1)
-
-        # Favorite filter checkbox
-        self.favorite_filter_checkbox = QCheckBox("⭐ Favorites")
-        self.favorite_filter_checkbox.setMinimumHeight(40)
-        self.favorite_filter_checkbox.setStyleSheet("""
-            QCheckBox {
-                font-size: 12pt;
-                color: #333;
-                padding: 10px;
-                background-color: white;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 15px;
-                margin-bottom: 15px;
-                padding-left: 12px;
-            }
-            QCheckBox:hover {
-                border: 2px solid #ffc107;
-                background-color: #fffde7;
-            }
-            QCheckBox::indicator {
-                width: 20px;
-                height: 20px;
-            }
-        """)
-        self.favorite_filter_checkbox.stateChanged.connect(self.filter_history_items)
-        filter_row.addWidget(self.favorite_filter_checkbox, stretch=1)
-
-        # Show Saved filter checkbox
-        self.show_saved_checkbox = QCheckBox("📋 Saved")
-        self.show_saved_checkbox.setMinimumHeight(40)
-        self.show_saved_checkbox.setStyleSheet("""
-            QCheckBox {
-                font-size: 12pt;
-                color: #333;
-                padding: 10px;
-                background-color: white;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 15px;
-                margin-bottom: 15px;
-                padding-left: 12px;
-            }
-            QCheckBox:hover {
-                border: 2px solid #ff9800;
-                background-color: #fff3e0;
-            }
-            QCheckBox::indicator {
-                width: 20px;
-                height: 20px;
-            }
-        """)
-        self.show_saved_checkbox.setToolTip("Show only saved submissions (not applying)")
-        self.show_saved_checkbox.stateChanged.connect(self.filter_history_items)
-        filter_row.addWidget(self.show_saved_checkbox, stretch=1)
-
-        page_layout.addLayout(filter_row)
+        # Store references to filter widgets
+        self.search_bar = filters['search_bar']
+        self.min_rating_combo = filters['min_rating']
+        self.min_quality_combo = filters['min_quality']
+        self.date_filter_combo = filters['date_filter']
+        self.favorite_filter_checkbox = filters['favorites']
+        self.show_saved_checkbox = filters['saved']
 
         # Scrollable area for history items
         scroll_area = QScrollArea()
@@ -738,15 +571,15 @@ class ResumeApp(QMainWindow):
 
     #endregion
 
-    def update_date_applied(self, data, item_widget):
-        """Update the Date Applied for a history item"""
+    def update_dates(self, data, item_widget):
+        """Update the Date Applied and Expected Response Date for a history item"""
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit
-        from datetime import datetime
+        from datetime import datetime, timedelta
 
         # Create dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle("Update Date Applied")
-        dialog.setMinimumWidth(400)
+        dialog.setWindowTitle("Update Dates")
+        dialog.setMinimumWidth(450)
         dialog.setStyleSheet("""
             QDialog {
                 background-color: white;
@@ -758,26 +591,27 @@ class ResumeApp(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # Title
-        title_label = QLabel("Update Date Applied")
+        title_label = QLabel("Update Application Dates")
         title_label.setStyleSheet("font-size: 14pt; font-weight: bold;")
         layout.addWidget(title_label)
 
-        # Current date info
-        current_date = data['Job']['Date Applied']
-        info_label = QLabel(f"Current Date: {current_date}")
+        # Current dates info
+        current_date_applied = data['Job']['Date Applied']
+        current_expected_response = data['Job']['Expected Response Date']
+        info_label = QLabel(f"Current: {current_date_applied} → {current_expected_response}")
         info_label.setStyleSheet("font-size: 11pt; color: #666;")
         layout.addWidget(info_label)
 
-        # New date input
-        date_label = QLabel("New Date (mm/dd/yy):")
-        date_label.setStyleSheet("font-size: 11pt; font-weight: bold;")
-        layout.addWidget(date_label)
+        # Date Applied input section
+        date_applied_label = QLabel("Date Applied (mm/dd/yy):")
+        date_applied_label.setStyleSheet("font-size: 11pt; font-weight: bold; margin-top: 10px;")
+        layout.addWidget(date_applied_label)
 
-        date_input = QLineEdit()
-        date_input.setPlaceholderText("e.g., 01/15/25")
-        date_input.setText(current_date)
-        date_input.setMinimumHeight(40)
-        date_input.setStyleSheet("""
+        date_applied_input = QLineEdit()
+        date_applied_input.setPlaceholderText("e.g., 01/15/25")
+        date_applied_input.setText(current_date_applied)
+        date_applied_input.setMinimumHeight(40)
+        date_applied_input.setStyleSheet("""
             QLineEdit {
                 padding: 10px;
                 font-size: 11pt;
@@ -789,14 +623,14 @@ class ResumeApp(QMainWindow):
                 border: 2px solid #4CAF50;
             }
         """)
-        layout.addWidget(date_input)
+        layout.addWidget(date_applied_input)
 
-        # Quick select buttons
-        quick_select_layout = QHBoxLayout()
-        quick_select_layout.setSpacing(8)
+        # Quick select buttons for Date Applied
+        quick_select_applied_layout = QHBoxLayout()
+        quick_select_applied_layout.setSpacing(8)
 
-        today_btn = QPushButton("Today")
-        today_btn.setStyleSheet("""
+        today_applied_btn = QPushButton("Today")
+        today_applied_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e3f2fd;
                 color: #1976d2;
@@ -810,15 +644,110 @@ class ResumeApp(QMainWindow):
                 background-color: #bbdefb;
             }
         """)
-        today_btn.clicked.connect(lambda: date_input.setText(datetime.now().strftime("%m/%d/%y")))
-        quick_select_layout.addWidget(today_btn)
+        today_applied_btn.clicked.connect(lambda: date_applied_input.setText(datetime.now().strftime("%m/%d/%y")))
+        quick_select_applied_layout.addWidget(today_applied_btn)
 
-        quick_select_layout.addStretch()
-        layout.addLayout(quick_select_layout)
+        quick_select_applied_layout.addStretch()
+        layout.addLayout(quick_select_applied_layout)
+
+        # Expected Response Date input section
+        expected_response_label = QLabel("Expected Response Date (mm/dd/yy):")
+        expected_response_label.setStyleSheet("font-size: 11pt; font-weight: bold; margin-top: 10px;")
+        layout.addWidget(expected_response_label)
+
+        expected_response_input = QLineEdit()
+        expected_response_input.setPlaceholderText("e.g., 01/29/25")
+        expected_response_input.setText(current_expected_response)
+        expected_response_input.setMinimumHeight(40)
+        expected_response_input.setStyleSheet("""
+            QLineEdit {
+                padding: 10px;
+                font-size: 11pt;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4CAF50;
+            }
+        """)
+        layout.addWidget(expected_response_input)
+
+        # Quick select buttons for Expected Response Date
+        quick_select_response_layout = QHBoxLayout()
+        quick_select_response_layout.setSpacing(8)
+
+        def set_response_date(days):
+            try:
+                applied_date = datetime.strptime(date_applied_input.text(), "%m/%d/%y")
+                response_date = applied_date + timedelta(days=days)
+                expected_response_input.setText(response_date.strftime("%m/%d/%y"))
+            except:
+                # If date applied is invalid, calculate from today
+                response_date = datetime.now() + timedelta(days=days)
+                expected_response_input.setText(response_date.strftime("%m/%d/%y"))
+
+        plus_7_btn = QPushButton("+7 Days")
+        plus_7_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #2e7d32;
+                font-size: 10pt;
+                font-weight: bold;
+                border: 1px solid #4CAF50;
+                border-radius: 6px;
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+        """)
+        plus_7_btn.clicked.connect(lambda: set_response_date(7))
+        quick_select_response_layout.addWidget(plus_7_btn)
+
+        plus_14_btn = QPushButton("+14 Days")
+        plus_14_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #2e7d32;
+                font-size: 10pt;
+                font-weight: bold;
+                border: 1px solid #4CAF50;
+                border-radius: 6px;
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+        """)
+        plus_14_btn.clicked.connect(lambda: set_response_date(14))
+        quick_select_response_layout.addWidget(plus_14_btn)
+
+        plus_30_btn = QPushButton("+30 Days")
+        plus_30_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e8f5e9;
+                color: #2e7d32;
+                font-size: 10pt;
+                font-weight: bold;
+                border: 1px solid #4CAF50;
+                border-radius: 6px;
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background-color: #c8e6c9;
+            }
+        """)
+        plus_30_btn.clicked.connect(lambda: set_response_date(30))
+        quick_select_response_layout.addWidget(plus_30_btn)
+
+        quick_select_response_layout.addStretch()
+        layout.addLayout(quick_select_response_layout)
 
         # Button row
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
+        button_layout.setContentsMargins(0, 10, 0, 0)
 
         cancel_btn = QPushButton("Cancel")
         cancel_btn.setMinimumHeight(40)
@@ -865,22 +794,27 @@ class ResumeApp(QMainWindow):
 
         # Show dialog and handle result
         if dialog.exec():
-            new_date = date_input.text().strip()
+            new_date_applied = date_applied_input.text().strip()
+            new_expected_response = expected_response_input.text().strip()
 
-            # Validate date format (basic validation)
+            # Validate date formats
             try:
-                datetime.strptime(new_date, "%m/%d/%y")
+                datetime.strptime(new_date_applied, "%m/%d/%y")
+                datetime.strptime(new_expected_response, "%m/%d/%y")
 
                 # Update the data
-                data['Job']['Date Applied'] = new_date
+                data['Job']['Date Applied'] = new_date_applied
+                data['Job']['Expected Response Date'] = new_expected_response
 
                 # Save the updated JSON
                 from Utility import save_json_obj, expand_list_to_keys
                 save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
 
-                print(f"Updated Date Applied to {new_date} for: {data['Job']['Position Title']} at {data['Job']['Company Name']}")
+                print(f"Updated dates for: {data['Job']['Position Title']} at {data['Job']['Company Name']}")
+                print(f"  Date Applied: {new_date_applied}")
+                print(f"  Expected Response: {new_expected_response}")
 
-                # Refresh the history page to show updated date
+                # Refresh the history page to show updated dates
                 self.show_files_page()
 
             except ValueError:
@@ -888,7 +822,7 @@ class ResumeApp(QMainWindow):
                 error_box = QMessageBox()
                 error_box.setIcon(QMessageBox.Icon.Warning)
                 error_box.setWindowTitle("Invalid Date Format")
-                error_box.setText("Please enter a valid date in mm/dd/yy format.")
+                error_box.setText("Please enter valid dates in mm/dd/yy format for both fields.")
                 error_box.setStandardButtons(QMessageBox.StandardButton.Ok)
                 error_box.exec()
 
@@ -1225,13 +1159,13 @@ class ResumeApp(QMainWindow):
         # Add stretch to push icons to the right
         action_bar_layout.addStretch()
 
-        # Update Date Applied button
+        # Update Dates button
 
         def on_calendar_click(event):
             event.accept()
-            self.update_date_applied(data, item_widget)
+            self.update_dates(data, item_widget)
 
-        calendar_btn = ActionBarButton("📅", "Update Date Applied", on_calendar_click,
+        calendar_btn = ActionBarButton("📅", "Update Dates", on_calendar_click,
                                        hover_color="#e8f5e9", hover_border="#4CAF50", pressed_color="#c8e6c9")
         action_bar_layout.addWidget(calendar_btn)
 
@@ -1390,6 +1324,18 @@ class ResumeApp(QMainWindow):
         self.archive_title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
         page_layout.addWidget(self.archive_title_label)
 
+        # Create filter bar using reusable component
+        from Widgets import FilterBar
+        filters = FilterBar(on_filter_changed=self.filter_archive_items,
+                           include_favorites=False, include_saved=False)
+        page_layout.addLayout(filters['layout'])
+
+        # Store references to filter widgets
+        self.archive_search_bar = filters['search_bar']
+        self.archive_min_rating_combo = filters['min_rating']
+        self.archive_min_quality_combo = filters['min_quality']
+        self.archive_date_filter_combo = filters['date_filter']
+
         # Create scroll area for archived items
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -1425,21 +1371,114 @@ class ResumeApp(QMainWindow):
 
         # Load archived data
         archived_datas = sorted(get_archived_datas(), key=lambda data: data['Meta']['Date Created'], reverse=True )
-        
+
         # Update title with count
         self.archive_title_label.setText(f"Archive ({len(archived_datas)} Results)")
+
+        # Store archive items with searchable data for filtering
+        self.archive_items = []
 
         # Create archive items
         for data in archived_datas:
             try:
+                job_data = data['Job']
                 archive_item = self.create_archive_item(data)
+                self.archive_layout.addWidget(archive_item)
+
+                # Store item with its searchable data
+                self.archive_items.append({
+                    'widget': archive_item,
+                    'position': job_data['Position Title'].lower(),
+                    'company': job_data['Company Name'].lower(),
+                    'tech_stack': ' '.join(job_data.get('Tech Stack', [])).lower(),
+                    'match_rating': float(job_data.get('Match Rating', 0)),
+                    'job_quality': float(job_data.get('Job Quality', 0)),
+                    'date_created': data['Meta']['Date Created']
+                })
             except Exception as e:
                 name = data['Meta']['File Name']
                 print(f"{'-'*50}\nCould not create archived item\n{name}\n{'-'*50}\n")
-            self.archive_layout.addWidget(archive_item)
+
+        # Clear search bar and reset filters
+        self.archive_search_bar.clear()
+        self.archive_min_rating_combo.setCurrentIndex(0)
+        self.archive_min_quality_combo.setCurrentIndex(0)
+        self.archive_date_filter_combo.setCurrentIndex(0)
 
         # Switch to archive page
         self.stacked_widget.setCurrentIndex(2)
+
+    def filter_archive_items(self):
+        """Filter archive items based on search query, minimum rating, minimum job quality, and date range"""
+        from datetime import datetime, timedelta
+
+        query = self.archive_search_bar.text().lower()
+
+        # Get minimum rating filter
+        rating_text = self.archive_min_rating_combo.currentText()
+        if rating_text == "All Ratings":
+            min_rating = 0
+        else:
+            # Extract number from "X+" format
+            min_rating = int(rating_text.rstrip('+'))
+
+        # Get minimum job quality filter
+        quality_text = self.archive_min_quality_combo.currentText()
+        if quality_text == "All Quality":
+            min_quality = 0
+        else:
+            # Extract number from "X+" format
+            min_quality = int(quality_text.rstrip('+'))
+
+        # Get date filter
+        date_filter_text = self.archive_date_filter_combo.currentText()
+        if date_filter_text == "Any day":
+            date_cutoff = None
+        elif date_filter_text == "Today":
+            date_cutoff = datetime.now().date()
+        elif date_filter_text == "Last 3 Days":
+            date_cutoff = (datetime.now() - timedelta(days=3)).date()
+        elif date_filter_text == "Last 7 Days":
+            date_cutoff = (datetime.now() - timedelta(days=7)).date()
+        elif date_filter_text == "Last 30 Days":
+            date_cutoff = (datetime.now() - timedelta(days=30)).date()
+
+        # Count visible items
+        visible_count = 0
+
+        for item_data in self.archive_items:
+            # Check if query matches position, company, or tech stack
+            text_match = (query in item_data['position'] or
+                         query in item_data['company'] or
+                         query in item_data['tech_stack'])
+
+            # Check if rating meets minimum
+            rating_match = item_data['match_rating'] >= min_rating
+
+            # Check if job quality meets minimum
+            quality_match = item_data['job_quality'] >= min_quality
+
+            # Check if date matches filter
+            if date_cutoff is None:
+                date_match = True  # "Any day" - show all
+            else:
+                item_date = datetime.fromisoformat(item_data['date_created']).date()
+                if date_filter_text == "Today":
+                    date_match = item_date == date_cutoff
+                else:
+                    # "Last X Days" - show items from cutoff date onwards
+                    date_match = item_date >= date_cutoff
+
+            # Show item only if all conditions are met
+            is_visible = text_match and rating_match and quality_match and date_match
+            item_data['widget'].setVisible(is_visible)
+
+            # Update counts
+            if is_visible:
+                visible_count += 1
+
+        # Update title label with filtered count
+        self.archive_title_label.setText(f"Archive ({visible_count} Results)")
 
     def create_archive_item(self, data):
         """Create a simplified archive item widget showing company, match rate, job quality, and applied date"""
