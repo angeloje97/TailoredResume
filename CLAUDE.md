@@ -53,7 +53,7 @@ This is a Python desktop application for tailoring resumes using AI. It features
   - Displays applications moved to Resources/Json Data/Archived/ folder
   - Action buttons: open folder (📁), generate documents (📝), unarchive (↩️)
 - **Page 3 - Statistics**: Placeholder for charts and analytics
-- **Page 4 - Settings**: Configure GPT model and auto-archive behavior (saved to Config.json)
+- **Page 4 - Settings**: Configure GPT model, auto-archive behavior, and auto-archive favorites (saved to Config.json)
 - **UI Framework**: Uses QStackedWidget for page switching, custom styled widgets with emojis
 - **Generate button handler**: `on_generate()` creates AIWorker thread, disables button, updates text to "Generating..." then "Processing Documents..."
 - **Response handlers**: `on_ai_response()` processes JSON, saves data, generates resume/cover letter, converts to PDF, plays notification sound; `on_ai_error()` handles errors
@@ -105,6 +105,7 @@ This is a Python desktop application for tailoring resumes using AI. It features
 - **InputText(label, layout_obj, placeholder, height)**: Creates labeled QLineEdit with consistent styling, adds both label and input to layout
 - **InputTextBox(label, layout_obj, placeholder, height)**: Creates labeled QTextEdit for multi-line input, optional label
 - **LabelDescription(label_text, description_text, layout_obj, inline)**: Creates label-description pairs for history items, supports inline (horizontal) or stacked layout
+- **SettingsCheckbox(label, layout_obj, is_checked, on_change, tooltip, indent)**: Creates styled checkbox for settings pages with optional tooltip and indentation for visual hierarchy
 - All widgets use consistent color scheme (#4CAF50 green for focus/hover, #2c3e50 dark blue backgrounds)
 
 ### Path Configuration
@@ -392,7 +393,7 @@ def on_response_callback(response_text):
 
 **Using Widgets.py helpers**:
 ```python
-from Widgets import SideBarButton, InputText, InputTextBox, LabelDescription
+from Widgets import SideBarButton, InputText, InputTextBox, LabelDescription, SettingsCheckbox
 
 # Create sidebar button
 btn = SideBarButton("📄", "Resume Generator", lambda: self.stacked_widget.setCurrentIndex(0))
@@ -405,6 +406,15 @@ description_input = InputTextBox("Job Description", layout, placeholder="Paste j
 
 # Create label-description pair (inline or stacked)
 LabelDescription("Match Rating:", "8.5/10", layout, inline=True)
+
+# Create settings checkbox with optional tooltip
+auto_archive_checkbox = SettingsCheckbox(
+    "Auto Archive Expired Applications",
+    layout,
+    is_checked=True,
+    on_change=self.save_settings,
+    tooltip="Automatically archive applications past their expected response date"
+)
 ```
 
 **History page filtering**:
@@ -512,11 +522,13 @@ worker.start()
 config = get_config()
 current_model = config['Settings']['GPT Model']  # e.g., "gpt-5"
 auto_archive = config['Settings']['Auto Archive Expired Applications']  # True/False
+auto_archive_favorites = config['Settings']['Auto Archive Expired Favorite Applications']  # True/False
 available_models = config['Resources']['Available Models']  # List of model names
 
 # Update config (used in Settings page)
 config['Settings']['GPT Model'] = 'gpt-5-mini'
 config['Settings']['Auto Archive Expired Applications'] = True
+config['Settings']['Auto Archive Expired Favorite Applications'] = False  # Protect favorites by default
 update_config(config)  # Saves to Config.json with indentation
 ```
 
@@ -536,6 +548,12 @@ archived = get_archived_datas()  # Returns list of JSON objects from Archived su
 archived_path = paths['json_data'] / 'Archived' / f"{file_name}.json"
 destination_path = paths['json_data'] / f"{file_name}.json"
 shutil.move(archived_path, destination_path)
+
+# Auto-archive expired applications (called on startup if enabled in Config.json)
+# - Archives applications past their Expected Response Date
+# - By default, favorites are protected from auto-archiving
+# - If 'Auto Archive Expired Favorite Applications' is enabled, favorites will also be archived
+archive_expired_datas()  # Checks config settings to determine behavior
 ```
 
 **History filtering examples**:

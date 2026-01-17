@@ -161,24 +161,29 @@ def get_archived_datas():
 
 def archive_expired_datas():
     global paths
+    global config
 
     expired_datas = []
     current_date = datetime.now()
 
     ensure_path_exists(paths['json_data'])
 
+    # Check if we should also archive expired favorites
+    archive_favorites = config.get('Settings', {}).get('Auto Archive Expired Favorite Applications', False)
+
     json_paths = [p for p in paths['json_data'].glob("*.json") if p.is_file()]
 
     for path in json_paths:
         with open(path, 'r', encoding='utf-8') as file:
             data = json.load(file)
-            
 
             try:
                 expected_date = data['Job']['Expected Response Date']
                 date = datetime.strptime(expected_date, "%m/%d/%y")
+                is_favorite = data['Meta'].get('Favorite', False)
 
-                if current_date > date:
+                # Archive if expired and either not a favorite, or archiving favorites is enabled
+                if current_date > date and (not is_favorite or archive_favorites):
                     expired_datas.append(path.stem)
             except Exception as e:
                 print("Does not have expected response date")

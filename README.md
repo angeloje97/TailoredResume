@@ -297,8 +297,9 @@ Navigate to the **Archive** page (📦 icon) to:
 ### Configuring Settings
 
 Navigate to the **Settings** page (⚙️ icon) to:
+- **Auto Archive Expired Applications**: Toggle automatic archiving of applications past their expected response date
+- **Auto Archive Expired Favorite Applications**: When enabled, favorite applications will also be auto-archived after they expire (disabled by default to protect favorites)
 - **Select GPT Model**: Choose from available models (gpt-5, gpt-5-mini, etc.)
-- **Auto Archive**: Toggle automatic archiving of expired applications (future feature)
 
 Settings are saved to `Config.json`.
 
@@ -385,6 +386,8 @@ The AI follows these instructions when generating each resume.
 ```json
 {
     "Settings": {
+        "Auto Archive Expired Applications": true,
+        "Auto Archive Expired Favorite Applications": false,
         "GPT Model": "gpt-5-mini"
     }
 }

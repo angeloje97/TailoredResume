@@ -571,6 +571,39 @@ class ResumeApp(QMainWindow):
 
     #endregion
 
+    #region Delete History Item
+
+    def delete_history_item(self, data):
+        """Delete a history item by removing its JSON file permanently"""
+        from Utility import paths
+        from PySide6.QtWidgets import QMessageBox
+        import os
+
+        file_name = f"{data['Meta']['File Name']}"
+        # Show confirmation dialog
+
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setWindowTitle("Delete History Item")
+        msg_box.setText(f"Are you sure you want to permanently delete this item?")
+        msg_box.setInformativeText(f"{file_name}\n\nThis action cannot be undone.")
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg_box.setDefaultButton(QMessageBox.StandardButton.No)
+
+        result = msg_box.exec()
+
+        if result == QMessageBox.StandardButton.Yes:
+            # Delete the JSON file
+            json_file_path = paths['json_data'] / f"{file_name}.json"
+            if json_file_path.exists():
+                os.remove(json_file_path)
+                print(f"Deleted: {file_name}")
+
+            # Refresh the history page
+            self.show_files_page()
+
+    #endregion
+
     def update_dates(self, data, item_widget):
         """Update the Date Applied and Expected Response Date for a history item"""
         from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit
@@ -1254,6 +1287,15 @@ class ResumeApp(QMainWindow):
         save_submission_btn.mousePressEvent = on_save_submission_click
         action_bar_layout.addWidget(save_submission_btn)
 
+        # Delete icon button
+        def on_delete_click(event):
+            event.accept()
+            self.delete_history_item(data)
+
+        delete_btn = ActionBarButton("🗑️", "Delete", on_delete_click,
+                                     hover_color="#ffebee", hover_border="#f44336", pressed_color="#ffcdd2")
+        action_bar_layout.addWidget(delete_btn)
+
         details_layout.addWidget(action_bar)
 
         #region Details
@@ -1483,6 +1525,7 @@ class ResumeApp(QMainWindow):
     def create_archive_item(self, data):
         """Create a simplified archive item widget showing company, match rate, job quality, and applied date"""
         from Utility import restore_archive_data
+        from Widgets import ActionBarButton
         
         job_data = data['Job']
 
@@ -1586,28 +1629,21 @@ class ResumeApp(QMainWindow):
         item_layout.addWidget(date_label)
 
         # Restore button
-        restore_btn = QPushButton("↩️")
-        restore_btn.setFixedSize(36, 36)
-        restore_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        restore_btn.setToolTip("Restore")
-        restore_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                font-size: 16pt;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: #e3f2fd;
-                border: 2px solid #2196F3;
-            }
-            QPushButton:pressed {
-                background-color: #bbdefb;
-            }
-        """)
-        restore_btn.clicked.connect(lambda: self.restore_archive_item(data))
+        def on_restore_click(event):
+            event.accept()
+            self.restore_archive_item(data)
+
+        restore_btn = ActionBarButton("↩️", "Restore", on_restore_click)
         item_layout.addWidget(restore_btn)
+
+        # Delete button
+        def on_delete_click(event):
+            event.accept()
+            self.delete_archive_item(data)
+
+        delete_btn = ActionBarButton("🗑️", "Delete", on_delete_click,
+                                     hover_color="#ffebee", hover_border="#f44336", pressed_color="#ffcdd2")
+        item_layout.addWidget(delete_btn)
 
         return item_widget
 
@@ -1630,6 +1666,36 @@ class ResumeApp(QMainWindow):
         if result == QMessageBox.StandardButton.Yes:
             # Restore the JSON file
             restore_archive_data(file_name)
+
+            # Refresh the archive page
+            self.show_archive_page()
+
+    def delete_archive_item(self, data):
+        """Delete an archived item permanently"""
+        from Utility import paths
+        from PySide6.QtWidgets import QMessageBox
+        import os
+
+        file_name = f"{data['Meta']['File Name']}"
+
+        # Show confirmation dialog
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setWindowTitle("Delete Archived Item")
+        msg_box.setText(f"Are you sure you want to permanently delete this item?")
+        msg_box.setInformativeText(f"{file_name}\n\nThis action cannot be undone.")
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg_box.setDefaultButton(QMessageBox.StandardButton.No)
+
+        result = msg_box.exec()
+
+        if result == QMessageBox.StandardButton.Yes:
+            # Delete the JSON file from archive folder
+            archived_path = paths['json_data'] / 'Archived'
+            json_file_path = archived_path / f"{file_name}.json"
+            if json_file_path.exists():
+                os.remove(json_file_path)
+                print(f"Deleted archived item: {file_name}")
 
             # Refresh the archive page
             self.show_archive_page()
@@ -1680,28 +1746,23 @@ class ResumeApp(QMainWindow):
         title_label.setStyleSheet("font-size: 18pt; font-weight: bold;")
         main_layout.addWidget(title_label)
 
-        # Auto Archive Setting
-        auto_archive_layout = QHBoxLayout()
-        auto_archive_layout.setSpacing(10)
+        # Auto Archive Settings
+        from Widgets import SettingsCheckbox
 
-        self.auto_archive_checkbox = QCheckBox("Auto Archive Expired Applications")
-        self.auto_archive_checkbox.setChecked(self.config_data['Settings']['Auto Archive Expired Applications'])
-        self.auto_archive_checkbox.setStyleSheet("""
-            QCheckBox {
-                font-size: 12pt;
-                color: #333;
-                padding: 8px;
-            }
-            QCheckBox::indicator {
-                width: 20px;
-                height: 20px;
-            }
-        """)
-        self.auto_archive_checkbox.stateChanged.connect(self.save_settings)
-        auto_archive_layout.addWidget(self.auto_archive_checkbox)
-        auto_archive_layout.addStretch()
+        self.auto_archive_checkbox = SettingsCheckbox(
+            "Auto Archive Expired Applications",
+            main_layout,
+            is_checked=self.config_data['Settings']['Auto Archive Expired Applications'],
+            on_change=self.save_settings
+        )
 
-        main_layout.addLayout(auto_archive_layout)
+        self.auto_archive_favorites_checkbox = SettingsCheckbox(
+            "Auto Archive Expired Favorite Applications",
+            main_layout,
+            is_checked=self.config_data['Settings'].get('Auto Archive Expired Favorite Applications', False),
+            on_change=self.save_settings,
+            tooltip="When enabled, favorite applications will also be auto-archived after they expire"
+        )
 
         # GPT Model Setting
         model_layout = QVBoxLayout()
@@ -1754,12 +1815,13 @@ class ResumeApp(QMainWindow):
         """Save settings to Config.json using update_config"""
         # Update config data
         self.config_data['Settings']['Auto Archive Expired Applications'] = self.auto_archive_checkbox.isChecked()
+        self.config_data['Settings']['Auto Archive Expired Favorite Applications'] = self.auto_archive_favorites_checkbox.isChecked()
         self.config_data['Settings']['GPT Model'] = self.model_combo.currentText()
 
         # Save to file using Utility function
         update_config(self.config_data)
 
-        print(f"Settings saved: Auto Archive = {self.auto_archive_checkbox.isChecked()}, Model = {self.model_combo.currentText()}")
+        print(f"Settings saved: Auto Archive = {self.auto_archive_checkbox.isChecked()}, Auto Archive Favorites = {self.auto_archive_favorites_checkbox.isChecked()}, Model = {self.model_combo.currentText()}")
 
     #endregion
 
