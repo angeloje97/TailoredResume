@@ -27,6 +27,16 @@ echo Installing dependencies from requirements.txt...
 pip install -r requirements.txt
 echo.
 
+REM Create BaseResumes directory if it doesn't exist
+if not exist "BaseResumes" (
+    echo Creating BaseResumes directory...
+    mkdir BaseResumes
+    echo BaseResumes directory created.
+) else (
+    echo BaseResumes directory already exists.
+)
+echo.
+
 echo ========================================
 echo Installation Complete!
 echo ========================================
