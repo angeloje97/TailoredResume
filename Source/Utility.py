@@ -24,6 +24,7 @@ base_resumes = []
 base_resume_texts = []
 full_base_resume_text = ""
 resume_prompt = ""
+match_rating_prompt = ""
 
 
 json_template = {}
@@ -119,17 +120,22 @@ def get_templates():
     global json_template
     global cover_letter_template
     global resume_prompt
+    global match_rating_prompt
 
     prompt_path = paths['resources'] / "Resume Prompt.md"
+    match_rating_prompt_path = paths['resources'] / "Match Rating Prompt.md"
     json_path = paths['resources'] / "Json Template.json"
     resume_template = paths['resources'] / "Resume Template.docx"
     cover_letter_template = paths['resources'] / "Cover Letter Template.docx"
 
     with open(json_path, "r", encoding="utf-8") as file:
         json_template = json.load(file)
-    
+
     with open(prompt_path, 'r', encoding="utf-8") as file:
         resume_prompt = file.read()
+
+    with open(match_rating_prompt_path, 'r', encoding="utf-8") as file:
+        match_rating_prompt = file.read()
 
 def get_json_datas():
     global paths

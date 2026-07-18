@@ -168,7 +168,9 @@ class ResumeApp(QMainWindow):
         self.save_submission_checkbox.setToolTip("Check this if you're NOT applying but want to save this job for reference only. Documents won't be generated.")
         main_layout.addWidget(self.save_submission_checkbox)
 
-        # Generate button
+        # Generate / Check Match Rating buttons
+        generate_row = QHBoxLayout()
+
         self.generate_button = QPushButton("Generate")
         self.generate_button.setMinimumHeight(50)
         self.generate_button.setStyleSheet("""
@@ -189,10 +191,38 @@ class ResumeApp(QMainWindow):
             }
         """)
         self.generate_button.clicked.connect(self.on_generate)
-        main_layout.addWidget(self.generate_button)
+        generate_row.addWidget(self.generate_button)
+
+        self.check_match_rating_button = QPushButton("Check Match Rating")
+        self.check_match_rating_button.setMinimumHeight(50)
+        self.check_match_rating_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2c3e50;
+                color: white;
+                font-size: 14pt;
+                font-weight: bold;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #34495e;
+            }
+            QPushButton:pressed {
+                background-color: #1b2733;
+            }
+        """)
+        self.check_match_rating_button.clicked.connect(self.on_check_match_rating)
+        generate_row.addWidget(self.check_match_rating_button)
+
+        main_layout.addLayout(generate_row)
 
         # Add page to stacked widget
         self.stacked_widget.addWidget(page)
+
+    def on_check_match_rating(self):
+        """Handle the check match rating button click"""
+        pass
 
     def on_generate(self):
         """Handle the generate button click"""
@@ -206,7 +236,7 @@ class ResumeApp(QMainWindow):
 
         # Reload templates and prompts
         get_templates()
-        from Utility import resume_prompt, json_template, full_base_resume_text
+        from Utility import resume_prompt, json_template, full_base_resume_text, match_rating_prompt
 
         current_date_time = datetime.now().strftime("%B %d, %Y %I:%M %p")
 
@@ -214,7 +244,8 @@ class ResumeApp(QMainWindow):
         # Build the AI prompt
         message = f"My resumes:\n{full_base_resume_text}\n"
         message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
-        message += f"{resume_prompt}"
+        message += f"{resume_prompt}\n"
+        message += f"Match Rating: {match_rating_prompt}"
         message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
         message += f"Also make sure to fillout the cover page. The time this request was made is {current_date_time}"
 
