@@ -2,7 +2,7 @@
     "Settings": {
         "Auto Archive Expired Applications": true,
         "Auto Archive Expired Favorite Applications": false,
-        "GPT Model": "gpt-5"
+        "Current Model": "claude-sonnet-5"
     },
     "Resources": {
         "Available Models": [
@@ -10,7 +10,10 @@
             "gpt-5-chat-latest",
             "gpt-5-mini",
             "gpt-5-nano",
-            "chatgpt-4o-latest"
+            "chatgpt-4o-latest",
+            "claude-opus-4-8",
+            "claude-sonnet-5",
+            "claude-haiku-4-5"
         ]
     }
 }

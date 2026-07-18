@@ -9,6 +9,7 @@ from Utility import json_template, full_base_resume_text,  resume_template, cove
 from Utility import save_json_obj, expand_list_to_keys, write_to_docx, clear_temp, save_document_temp, copy_temp_to_results, convert_temp_to_pdf, get_templates, play_notification_sound, get_config, update_config
 from Agent import create_request
 from datetime import datetime
+from icecream import ic
 import json
 
 
@@ -231,6 +232,8 @@ class ResumeApp(QMainWindow):
         try:
             from Utility import get_config
 
+            ic(response)
+
             config = get_config()
 
             data = json.loads(response)
@@ -262,7 +265,7 @@ class ResumeApp(QMainWindow):
 
             data['Meta']['Resume Path'] = str(paths['results'] / f"{resume_name}.docx")
             data['Meta']['Cover Letter Path'] = str(paths['results'] / f"{cover_letter_name}.docx")
-            data['Meta']['Model Used'] = config['Settings']['GPT Model']
+            data['Meta']['Model Used'] = config['Settings']['Current Model']
             data['Meta']['Date Created'] = current_date_time.isoformat()
             data['Meta']['Favorite'] = False
 
@@ -876,6 +879,8 @@ class ResumeApp(QMainWindow):
     def generate_documents(self, data):
         """Generate documents (resume and cover letter) for a history item"""
         # Placeholder for generate documents functionality
+
+        ic(data)
 
         clear_temp()
         resume_data = expand_list_to_keys(data['Resume'], "")
@@ -1774,7 +1779,7 @@ class ResumeApp(QMainWindow):
 
         self.model_combo = QComboBox()
         self.model_combo.addItems(self.config_data['Resources']['Available Models'])
-        current_model = self.config_data['Settings']['GPT Model']
+        current_model = self.config_data['Settings']['Current Model']
         self.model_combo.setCurrentText(current_model)
         self.model_combo.setMinimumHeight(40)
         self.model_combo.setStyleSheet("""
@@ -1816,7 +1821,7 @@ class ResumeApp(QMainWindow):
         # Update config data
         self.config_data['Settings']['Auto Archive Expired Applications'] = self.auto_archive_checkbox.isChecked()
         self.config_data['Settings']['Auto Archive Expired Favorite Applications'] = self.auto_archive_favorites_checkbox.isChecked()
-        self.config_data['Settings']['GPT Model'] = self.model_combo.currentText()
+        self.config_data['Settings']['Current Model'] = self.model_combo.currentText()
 
         # Save to file using Utility function
         update_config(self.config_data)
