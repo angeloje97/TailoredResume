@@ -25,6 +25,7 @@ base_resume_texts = []
 full_base_resume_text = ""
 resume_prompt = ""
 match_rating_prompt = ""
+job_quality_prompt = ""
 
 
 json_template = {}
@@ -121,9 +122,11 @@ def get_templates():
     global cover_letter_template
     global resume_prompt
     global match_rating_prompt
+    global job_quality_prompt
 
     prompt_path = paths['resources'] / "Resume Prompt.md"
     match_rating_prompt_path = paths['resources'] / "Match Rating Prompt.md"
+    job_quality_prompt_path = paths['resources'] / "Job Quality Prompt.md"
     json_path = paths['resources'] / "Json Template.json"
     resume_template = paths['resources'] / "Resume Template.docx"
     cover_letter_template = paths['resources'] / "Cover Letter Template.docx"
@@ -136,6 +139,9 @@ def get_templates():
 
     with open(match_rating_prompt_path, 'r', encoding="utf-8") as file:
         match_rating_prompt = file.read()
+
+    with open(job_quality_prompt_path, 'r', encoding="utf-8") as file:
+        job_quality_prompt = file.read()
 
 def get_json_datas():
     global paths

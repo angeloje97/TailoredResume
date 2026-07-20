@@ -168,7 +168,7 @@ class ResumeApp(QMainWindow):
         self.save_submission_checkbox.setToolTip("Check this if you're NOT applying but want to save this job for reference only. Documents won't be generated.")
         main_layout.addWidget(self.save_submission_checkbox)
 
-        # Generate / Check Match Rating buttons
+        # Generate / Check Rating buttons
         generate_row = QHBoxLayout()
 
         self.generate_button = QPushButton("Generate")
@@ -193,9 +193,9 @@ class ResumeApp(QMainWindow):
         self.generate_button.clicked.connect(self.on_generate)
         generate_row.addWidget(self.generate_button)
 
-        self.check_match_rating_button = QPushButton("Check Match Rating")
-        self.check_match_rating_button.setMinimumHeight(50)
-        self.check_match_rating_button.setStyleSheet("""
+        self.check_rating_button = QPushButton("Check Rating")
+        self.check_rating_button.setMinimumHeight(50)
+        self.check_rating_button.setStyleSheet("""
             QPushButton {
                 background-color: #2c3e50;
                 color: white;
@@ -212,19 +212,173 @@ class ResumeApp(QMainWindow):
                 background-color: #1b2733;
             }
         """)
-        self.check_match_rating_button.clicked.connect(self.on_check_match_rating)
-        generate_row.addWidget(self.check_match_rating_button)
+        self.check_rating_button.clicked.connect(self.on_check_rating)
+        generate_row.addWidget(self.check_rating_button)
 
         main_layout.addLayout(generate_row)
 
         # Add page to stacked widget
         self.stacked_widget.addWidget(page)
 
-    def on_check_match_rating(self):
-        """Handle the check match rating button click"""
-        pass
+    def on_check_rating(self):
+        """Handle the check rating button click"""
 
-    def on_generate(self):
+        from Utility import full_base_resume_text, match_rating_prompt, job_quality_prompt
+
+        job_title = self.job_title.text()
+        company_name = self.company_name.text()
+        job_desc = self.job_description.toPlainText()
+
+        template = {
+            'Match Rating': 'Scale from 1-10',
+            'Match Rating Description': '',
+            'Job Quality': 'Scale from 1-10',
+            'Job Quality Description': ''
+        }
+
+        message = f'Current Resumes : {full_base_resume_text}\n'
+        message += f"Match Rating Prompt: {match_rating_prompt}\n"
+        message += f"Job Quality Prompt: {job_quality_prompt}\n"
+        message += f"Job Title: {job_title}\nCompany: {company_name}\nJob Description: {job_desc}\n"
+        message += f"Respond in json format using this template: {json.dumps(template)}"
+
+        self.check_rating_button.setEnabled(False)
+        self.check_rating_button.setText("Checking...")
+
+        self.rating_worker = AIWorker(message)
+        self.rating_worker.finished.connect(self.on_rating_response)
+        self.rating_worker.error.connect(self.on_rating_error)
+        self.rating_worker.start()
+
+    def on_rating_response(self, response):
+        """Handle the rating AI response by showing a modal with the result"""
+
+        self.check_rating_button.setEnabled(True)
+        self.check_rating_button.setText("Check Rating")
+
+        data = json.loads(response)
+
+        self.current_match_rating = data['Match Rating']
+        self.current_match_rating_description = data['Match Rating Description']
+        self.current_job_quality = data['Job Quality']
+        self.current_job_quality_description = data['Job Quality Description']
+
+        self.show_rating_modal(
+            self.current_match_rating,
+            self.current_match_rating_description,
+            self.current_job_quality,
+            self.current_job_quality_description
+        )
+
+    def on_rating_error(self, error_message):
+        """Handle errors from the rating AI request"""
+        self.check_rating_button.setEnabled(True)
+        self.check_rating_button.setText("Check Rating")
+        self.on_ai_error(error_message)
+
+    def show_rating_modal(self, match_rating, match_rating_description, job_quality, job_quality_description):
+        """Show a modal with the match rating and job quality, with options to close or generate the resume"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Rating")
+        dialog.setMinimumWidth(420)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        title_label = QLabel("Rating Results")
+        title_label.setStyleSheet("font-size: 14pt; font-weight: bold;")
+        layout.addWidget(title_label)
+
+        def rating_color_for(value):
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                return "#c62828"
+            if value >= 8:
+                return "#2e7d32"
+            elif value >= 5:
+                return "#f57c00"
+            else:
+                return "#c62828"
+
+        match_rating_label = QLabel(f"⭐ Match Rating: {match_rating}/10")
+        match_rating_label.setStyleSheet(f"font-size: 20pt; font-weight: bold; color: {rating_color_for(match_rating)};")
+        layout.addWidget(match_rating_label)
+
+        match_description_label = QLabel(match_rating_description)
+        match_description_label.setWordWrap(True)
+        match_description_label.setStyleSheet("font-size: 11pt; color: #333;")
+        layout.addWidget(match_description_label)
+
+        job_quality_label = QLabel(f"⭐ Job Quality: {job_quality}/10")
+        job_quality_label.setStyleSheet(f"font-size: 20pt; font-weight: bold; color: {rating_color_for(job_quality)};")
+        layout.addWidget(job_quality_label)
+
+        quality_description_label = QLabel(job_quality_description)
+        quality_description_label.setWordWrap(True)
+        quality_description_label.setStyleSheet("font-size: 11pt; color: #333;")
+        layout.addWidget(quality_description_label)
+
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+        button_layout.setContentsMargins(0, 10, 0, 0)
+
+        close_btn = QPushButton("Close")
+        close_btn.setMinimumHeight(40)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f5f5f5;
+                color: #333;
+                font-size: 11pt;
+                font-weight: bold;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
+        close_btn.clicked.connect(dialog.reject)
+        button_layout.addWidget(close_btn)
+
+        generate_btn = QPushButton("Generate Resume")
+        generate_btn.setMinimumHeight(40)
+        generate_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                font-size: 11pt;
+                font-weight: bold;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        generate_btn.clicked.connect(dialog.accept)
+        button_layout.addWidget(generate_btn)
+
+        layout.addLayout(button_layout)
+
+        if dialog.exec():
+            self.on_generate(with_rating=False)
+
+
+    def on_generate(self, with_rating = True):
         """Handle the generate button click"""
         job_title = self.job_title.text()
         company_name = self.company_name.text()
@@ -236,7 +390,7 @@ class ResumeApp(QMainWindow):
 
         # Reload templates and prompts
         get_templates()
-        from Utility import resume_prompt, json_template, full_base_resume_text, match_rating_prompt
+        from Utility import resume_prompt, json_template, full_base_resume_text, match_rating_prompt, job_quality_prompt
 
         current_date_time = datetime.now().strftime("%B %d, %Y %I:%M %p")
 
@@ -245,7 +399,16 @@ class ResumeApp(QMainWindow):
         message = f"My resumes:\n{full_base_resume_text}\n"
         message += f"Company Name: {company_name}\n Job Title: {job_title}\n Job Description: {job_desc}\n"
         message += f"{resume_prompt}\n"
-        message += f"Match Rating: {match_rating_prompt}"
+
+        if with_rating:
+            message += f"Match Rating: {match_rating_prompt}\n"
+            message += f"Job Quality: {job_quality_prompt}"
+        else:
+            json_template['Job']['Match Rating'] = self.current_match_rating
+            json_template['Job']['Match Rating Description'] = self.current_match_rating_description
+            json_template['Job']['Job Quality'] = self.current_job_quality
+            json_template['Job']['Job Quality Description'] = self.current_job_quality_description
+
         message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
         message += f"Also make sure to fillout the cover page. The time this request was made is {current_date_time}"
 
@@ -262,8 +425,6 @@ class ResumeApp(QMainWindow):
         """Handle successful AI response"""
         try:
             from Utility import get_config
-
-            ic(response)
 
             config = get_config()
 
@@ -341,6 +502,8 @@ class ResumeApp(QMainWindow):
             else:
                 print("Resume generated successfully!")
         except Exception as e:
+            import traceback
+            ic(type(e).__name__, str(e), response, traceback.format_exc())
             self.on_ai_error(str(e))
 
     def on_ai_error(self, error_msg):
@@ -910,8 +1073,6 @@ class ResumeApp(QMainWindow):
     def generate_documents(self, data):
         """Generate documents (resume and cover letter) for a history item"""
         # Placeholder for generate documents functionality
-
-        ic(data)
 
         clear_temp()
         resume_data = expand_list_to_keys(data['Resume'], "")
