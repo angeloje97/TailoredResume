@@ -1,6 +1,6 @@
 # Resume Tailor
 
-An AI-powered desktop application that automatically tailors your resume and cover letter for specific job applications using OpenAI's GPT models.
+An AI-powered desktop application that automatically tailors your resume and cover letter for specific job applications using OpenAI or Anthropic (Claude) models.
 
 ## Overview
 
@@ -9,19 +9,23 @@ Resume Tailor analyzes job descriptions and intelligently customizes your resume
 - Using terminology and keywords from the job posting
 - Maintaining authenticity while optimizing for Applicant Tracking Systems (ATS)
 - Generating tailored cover letters
+- Rating job/resume match and job quality before you commit to generating documents
 - Tracking application history with match ratings and job quality metrics
 - Automatically converting documents to PDF format
 
-The application uses a PySide6 GUI to collect job information and leverages OpenAI's API to generate customized resumes from your base resume templates.
+The application uses a PySide6 GUI to collect job information and leverages the OpenAI or Anthropic API (depending on the model selected) to generate customized resumes from your base resume templates.
 
 ## Features
 
-- **AI-Powered Tailoring**: Uses GPT models to analyze job descriptions and customize resumes
+- **AI-Powered Tailoring**: Uses GPT or Claude models to analyze job descriptions and customize resumes
+- **Multi-Provider Support**: Switch between OpenAI and Anthropic models from the Settings page — no code changes needed
+- **Match & Quality Rating**: Check a job's match rating and job quality score before generating a full tailored resume
+- **Save Submission Mode**: Log an application (with an optional application link) without generating documents
 - **Multi-Format Output**: Generates both .docx and PDF versions of resumes and cover letters
 - **Application Tracking**: History page with filtering by match rating, job quality, date range, and tech stack
 - **Favorites System**: Mark and filter favorite applications for quick access
 - **Archive Management**: Dedicated archive page to organize and review old applications
-- **Configurable Models**: Choose from multiple GPT models (gpt-5, gpt-5-mini, etc.)
+- **Permanent Delete**: Remove history items you don't want to keep, even archived ones
 - **Audio Notifications**: Sound alert when document generation completes
 - **Document Regeneration**: Regenerate resume and cover letter from any saved application
 
@@ -29,7 +33,9 @@ The application uses a PySide6 GUI to collect job information and leverages Open
 
 - Python 3.8 or higher
 - Windows OS (for batch scripts and PDF conversion)
-- OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
+- An API key for at least one provider:
+  - OpenAI API key ([Get one here](https://platform.openai.com/api-keys)), and/or
+  - Anthropic API key ([Get one here](https://console.anthropic.com/settings/keys))
 - Microsoft Word or compatible .docx editor (for template creation)
 
 ## Setup Instructions
@@ -48,6 +54,7 @@ pip install -r requirements.txt
 
 This installs:
 - `openai` - OpenAI API client
+- `anthropic` - Anthropic (Claude) API client
 - `python-dotenv` - Environment variable management
 - `python-docx` - Word document processing
 - `docx2pdf` - PDF conversion
@@ -55,13 +62,16 @@ This installs:
 - `pygame` - Audio notifications
 - `icecream` - Debugging utility
 
-### 2. Configure API Key
+### 2. Configure API Key(s)
 
-Create a `.env` file in the project root directory:
+Create a `.env` file in the project root directory. Add the key(s) for whichever provider(s) you plan to use:
 
 ```
 OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ```
+
+You only need the key for the provider matching your selected model in Settings (see [Changing the AI Model](#changing-the-ai-model)), but you can set both to switch freely.
 
 **Important**: Never commit the `.env` file to version control. It's already in `.gitignore`.
 
@@ -243,17 +253,24 @@ python Source/Main.py
    - **Company Name** (optional): Name of the company
    - **Job Title** (optional): Position title
    - **Job Description** (required): Paste the full job posting
+   - **Application Link** (optional): URL of the job posting/application
+   - **Save Submission** (optional checkbox): When checked, generation only logs the application to your history — it skips document generation entirely. Useful for tracking applications you're submitting without a freshly tailored resume.
 
-2. **Click "Generate"**: The application will:
+2. **Optional: Click "Check Rating"** to preview fit before generating anything:
+   - The AI scores **Match Rating** (how well your experience fits the job) and **Job Quality** (how good the job/company looks), each 1-10 with a short explanation, shown in a popup
+   - From the popup you can **Close** (go back and edit inputs) or **Generate Resume** (proceed straight to document generation using the rating you just saw, without asking the AI to re-score it)
+
+3. **Click "Generate"**: The application will:
    - Analyze the job description
    - Select relevant experience from your base resumes
    - Tailor bullet points to match job requirements
-   - Generate both resume and cover letter
+   - Compute Match Rating and Job Quality (unless already computed via "Check Rating")
+   - Generate both resume and cover letter (skipped if "Save Submission" is checked)
    - Create PDF versions
    - Save everything to the `Results/` folder
    - Play a notification sound
 
-3. **Access Your Documents**:
+4. **Access Your Documents**:
    - Find generated files in the `Results/` folder
    - Both .docx and .pdf versions are created
    - File names include company and position (e.g., "Google Resume.docx")
@@ -270,6 +287,7 @@ Navigate to the **Files** page (🗂️ icon) to:
 - Open the Results folder directly
 - Regenerate documents from saved data
 - Archive old applications
+- Permanently delete applications you no longer want to track (confirmation required, cannot be undone)
 
 **History filters:**
 - **Search bar**: Filter by position, company, or tech stack (case-insensitive)
@@ -299,9 +317,9 @@ Navigate to the **Archive** page (📦 icon) to:
 Navigate to the **Settings** page (⚙️ icon) to:
 - **Auto Archive Expired Applications**: Toggle automatic archiving of applications past their expected response date
 - **Auto Archive Expired Favorite Applications**: When enabled, favorite applications will also be auto-archived after they expire (disabled by default to protect favorites)
-- **Select GPT Model**: Choose from available models (gpt-5, gpt-5-mini, etc.)
+- **Select AI Model**: Choose from available OpenAI or Anthropic models (e.g. gpt-5, gpt-5-mini, claude-sonnet-5, claude-opus-4-8)
 
-Settings are saved to `Config.json`.
+Settings are saved to `Config.json`. You need a valid API key in `.env` for whichever provider (OpenAI or Anthropic) the selected model belongs to.
 
 ## Project Structure
 
@@ -314,14 +332,16 @@ Settings are saved to `Config.json`.
 │   ├── Json Template.json   # AI response structure
 │   ├── Resume Template.docx # Resume formatting template
 │   ├── Cover Letter Template.docx
-│   ├── Resume Prompt.md     # AI instructions
+│   ├── Resume Prompt.md     # AI instructions for tailoring
+│   ├── Match Rating Prompt.md # AI instructions for the match rating score
+│   ├── Job Quality Prompt.md  # AI instructions for the job quality score
 │   └── Notification Sound.mp3 (optional)
 ├── Results/                  # Generated resumes and cover letters
 ├── Temp/                     # Temporary files during generation
 ├── Source/                   # Python source code
 │   ├── Main.py              # GUI application (entry point)
 │   ├── Utility.py           # Document processing
-│   ├── Agent.py             # OpenAI API integration
+│   ├── Agent.py             # OpenAI + Anthropic API integration
 │   └── Widgets.py           # Reusable UI components
 ├── .env                      # API keys (create this)
 ├── Config.json              # Application settings
@@ -340,13 +360,15 @@ Edit `Resources/Resume Prompt.md` to modify how the AI tailors resumes:
 - **Format constraints**: Line counts, character limits
 - **ATS optimization**: Keyword strategies
 
-The AI follows these instructions when generating each resume.
+The AI follows these instructions when generating each resume. Templates and prompts are reloaded from disk on every "Generate" click, so edits take effect immediately without restarting the app.
+
+Similarly, edit `Resources/Match Rating Prompt.md` and `Resources/Job Quality Prompt.md` to change how the "Check Rating" score and explanation are derived.
 
 ## Troubleshooting
 
-### "OpenAI API key not found"
+### "API key not found" (OpenAI or Anthropic)
 - Ensure `.env` file exists in the project root
-- Verify `OPENAI_API_KEY=your_key_here` is set correctly
+- Verify `OPENAI_API_KEY=your_key_here` and/or `ANTHROPIC_API_KEY=your_key_here` are set correctly, matching the model selected in Settings
 - No spaces around the `=` sign
 
 ### "Module not found" errors
@@ -375,7 +397,7 @@ The AI follows these instructions when generating each resume.
 
 ## Advanced Configuration
 
-### Changing the GPT Model
+### Changing the AI Model
 
 **Via GUI:**
 - Go to Settings page (⚙️)
@@ -388,12 +410,12 @@ The AI follows these instructions when generating each resume.
     "Settings": {
         "Auto Archive Expired Applications": true,
         "Auto Archive Expired Favorite Applications": false,
-        "GPT Model": "gpt-5-mini"
+        "Current Model": "claude-sonnet-5"
     }
 }
 ```
 
-Available models are listed in `Config.json` under `Resources.Available Models`.
+Available models are listed in `Config.json` under `Resources.Available Models` and can include both OpenAI (e.g. `gpt-5`, `gpt-5-mini`) and Anthropic (e.g. `claude-sonnet-5`, `claude-opus-4-8`) model names — the app routes each request to the right provider automatically based on the model name. Custom model names must contain `"gpt"` or `"claude"` to route correctly.
 
 ### Adding Custom Base Resumes
 
@@ -468,14 +490,14 @@ Mark important applications as favorites for quick access:
 
 ## Security Notes
 
-- **Never commit `.env` file**: Your OpenAI API key should remain private
-- **API costs**: Each resume generation makes an API call. Monitor your OpenAI usage
-- **Local processing**: All document processing happens locally; only text is sent to OpenAI API
+- **Never commit `.env` file**: Your OpenAI/Anthropic API keys should remain private
+- **API costs**: Each resume generation (and each "Check Rating" call) makes an API call. Monitor your usage with your provider
+- **Local processing**: All document processing happens locally; only text is sent to the OpenAI or Anthropic API, depending on the selected model
 - **Data storage**: Application history is stored locally in `Resources/Json Data/`
 
 ## License
 
-This project is for personal use. Ensure compliance with OpenAI's usage policies when using their API.
+This project is for personal use. Ensure compliance with OpenAI's and/or Anthropic's usage policies when using their APIs.
 
 ## Support
 
@@ -483,9 +505,9 @@ For issues or questions:
 1. Check the Troubleshooting section above
 2. Verify all setup steps were completed
 3. Review `CLAUDE.md` for technical implementation details
-4. Check OpenAI API status if generation fails
+4. Check OpenAI/Anthropic API status if generation fails
 
 ---
 
-**Version**: 1.0
-**Last Updated**: 2025
+**Version**: 1.1
+**Last Updated**: 2026
