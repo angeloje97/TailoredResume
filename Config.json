@@ -2,7 +2,12 @@
     "Settings": {
         "Auto Archive Expired Applications": true,
         "Auto Archive Expired Favorite Applications": false,
-        "Current Model": "claude-sonnet-5"
+        "Current Model": "claude-sonnet-5",
+        "Show AI Response Stream": true,
+        "Anthropic": {
+            "Thinking Type": "adaptive",
+            "Effort": "medium"
+        }
     },
     "Resources": {
         "Available Models": [

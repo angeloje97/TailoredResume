@@ -8,8 +8,8 @@
     "Resume": {
         "File Name": "Angelo_Esmeralda_{Company Name}_{Role if it's not long}_Resume",
         "Summary": "(240 - 335 Characters Including Spaces)",
-        "Job Title Note": "Only use professional experiences for Job1Title Job2Title, and Job3Title. They should also be in chronological order with most recent at the top",
-        "Job1Title" : "{Title} | {Company} | Jan 2025 - Jan 2026",
+        "Job Title Note": "Only use professional experiences for Job1Title and Job2Title",
+        "Job1Title" : "{Title} | {Company} | Jan 2023 - Jan 2025",
         "J1Details" : [
             "Details1 (~93-210 Characters)",
             "Details2 (<90 Characters)",
@@ -18,21 +18,11 @@
             "Details5 (~93-210 Characters)",
             "Details6 (<90 Characters)"
         ],
-        "Job2Title": "{Title} | {Company} | Jan 2023 - Jan 2025",
+        "Job2Title": "{Title} | {Company} | Jan 2022 - Jan 2023",
         "J2Details" : [
             "Details1 (~93-210 Characters)",
             "Details2 (<90 Characters)",
-            "Details3 (<90 Characters)",
-            "Details4 (<90 Characters)"
-
-        ],
-        "Job3Title": "{Title} | {Company} | Jan 2022 - Jan 2023",
-        "J3Details" : [
-            "Details1 (~93-210 Characters)",
-            "Details2 (<90 Characters)",
-            "Details3 (<90 Characters)",
-            "Details4 (<90 Characters)"
-
+            "Details3 (<90 Characters)"
         ],
         "TechnicalSkillsCategory1" : "",
         "TechnicalSkillsCategory1List" : ">89 Characters",
@@ -40,7 +30,17 @@
         "TechnicalSkillsCategory2List" : "<75 Characters",
         "TechnicalSkillsCategory3" : "",
         "TechnicalSkillsCategory3List" : "<75 Characters",
-        "Certifications": ""
+        "Certifications": "",
+        "PersonalProject1" : "{Project Name} - {Tech Stack}",
+        "P1Details" : [
+            "Details1 (<90 Characters)",
+            "Details2 (<90 Characters)"
+        ],
+        "PersonalProject2": "{Project Name} - {Tech Stack}",
+        "P2Details": [
+            "Details1 (<90 Characters)",
+            "Details2 (<90 Characters)"
+        ]
     },
 
     "CoverLetter" : {

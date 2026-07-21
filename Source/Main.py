@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                                QHBoxLayout, QLabel, QLineEdit, QTextEdit,
                                QPushButton, QStackedWidget, QScrollArea, QComboBox, QCheckBox)
 from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QTextCursor
 from Utility import json_template, full_base_resume_text,  resume_template, cover_letter_template, resume_prompt, paths, config
 from Utility import save_json_obj, expand_list_to_keys, write_to_docx, clear_temp, save_document_temp, copy_temp_to_results, convert_temp_to_pdf, get_templates, play_notification_sound, get_config, update_config
 from Agent import create_request
@@ -17,6 +17,7 @@ class AIWorker(QThread):
     """Worker thread for async AI requests"""
     finished = Signal(str)  # Signal to emit the response
     error = Signal(str)     # Signal to emit errors
+    chunk = Signal(str)     # Signal to emit streamed response chunks
 
     def __init__(self, message):
         super().__init__()
@@ -30,7 +31,7 @@ class AIWorker(QThread):
             asyncio.set_event_loop(loop)
 
             # Run the async function
-            response = loop.run_until_complete(create_request(self.message))
+            response = loop.run_until_complete(create_request(self.message, on_chunk=self.chunk.emit))
 
             # Emit success signal
             self.finished.emit(response)
@@ -190,7 +191,7 @@ class ResumeApp(QMainWindow):
                 background-color: #3d8b40;
             }
         """)
-        self.generate_button.clicked.connect(self.on_generate)
+        self.generate_button.clicked.connect(lambda: self.on_generate())
         generate_row.addWidget(self.generate_button)
 
         self.check_rating_button = QPushButton("Check Rating")
@@ -220,6 +221,70 @@ class ResumeApp(QMainWindow):
         # Add page to stacked widget
         self.stacked_widget.addWidget(page)
 
+    def show_stream_modal(self, title):
+        """Show a non-blocking modal that displays streamed AI output as it's received"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(title)
+        dialog.setMinimumSize(500, 400)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: white;
+            }
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(15, 15, 15, 15)
+
+        text_edit = QTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setStyleSheet("""
+            QTextEdit {
+                font-family: Consolas, monospace;
+                font-size: 10pt;
+                background-color: #f5f5f5;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 8px;
+            }
+        """)
+        layout.addWidget(text_edit)
+
+        self.stream_dialog = dialog
+        self.stream_text_edit = text_edit
+        dialog.show()
+
+    def on_stream_chunk(self, text):
+        """Append a streamed AI response chunk to the stream modal, if it's open"""
+        if getattr(self, 'stream_text_edit', None) is None:
+            return
+        self.stream_text_edit.moveCursor(QTextCursor.End)
+        self.stream_text_edit.insertPlainText(text)
+        self.stream_text_edit.moveCursor(QTextCursor.End)
+
+    def close_stream_modal(self):
+        """Close the stream modal, if it's open"""
+        if getattr(self, 'stream_dialog', None) is not None:
+            self.stream_dialog.close()
+            self.stream_dialog = None
+            self.stream_text_edit = None
+
+    def start_ai_worker(self, message, on_finished, on_error, stream_title):
+        """Create and start an AIWorker, optionally showing a live-streaming modal"""
+        from Utility import get_config
+
+        show_stream = get_config()['Settings'].get('Show AI Response Stream', False)
+        if show_stream:
+            self.show_stream_modal(stream_title)
+
+        worker = AIWorker(message)
+        worker.chunk.connect(self.on_stream_chunk)
+        worker.finished.connect(on_finished)
+        worker.error.connect(on_error)
+        worker.start()
+        return worker
+
     def on_check_rating(self):
         """Handle the check rating button click"""
 
@@ -245,13 +310,14 @@ class ResumeApp(QMainWindow):
         self.check_rating_button.setEnabled(False)
         self.check_rating_button.setText("Checking...")
 
-        self.rating_worker = AIWorker(message)
-        self.rating_worker.finished.connect(self.on_rating_response)
-        self.rating_worker.error.connect(self.on_rating_error)
-        self.rating_worker.start()
+        self.rating_worker = self.start_ai_worker(
+            message, self.on_rating_response, self.on_rating_error, "Checking Rating..."
+        )
 
     def on_rating_response(self, response):
         """Handle the rating AI response by showing a modal with the result"""
+
+        self.close_stream_modal()
 
         self.check_rating_button.setEnabled(True)
         self.check_rating_button.setText("Check Rating")
@@ -272,6 +338,7 @@ class ResumeApp(QMainWindow):
 
     def on_rating_error(self, error_message):
         """Handle errors from the rating AI request"""
+        self.close_stream_modal()
         self.check_rating_button.setEnabled(True)
         self.check_rating_button.setText("Check Rating")
         self.on_ai_error(error_message)
@@ -416,13 +483,13 @@ class ResumeApp(QMainWindow):
         # Store company name and save_submission flag for use in callback
 
         # Create and start worker thread
-        self.worker = AIWorker(message)
-        self.worker.finished.connect(self.on_ai_response)
-        self.worker.error.connect(self.on_ai_error)
-        self.worker.start()
+        self.worker = self.start_ai_worker(
+            message, self.on_ai_response, self.on_ai_error, "Generating Resume..."
+        )
 
     def on_ai_response(self, response):
         """Handle successful AI response"""
+        self.close_stream_modal()
         try:
             from Utility import get_config
 
@@ -508,6 +575,7 @@ class ResumeApp(QMainWindow):
 
     def on_ai_error(self, error_msg):
         """Handle AI request errors"""
+        self.close_stream_modal()
         print(f"Error: {error_msg}")
 
         # Re-enable button
@@ -1961,6 +2029,14 @@ class ResumeApp(QMainWindow):
             tooltip="When enabled, favorite applications will also be auto-archived after they expire"
         )
 
+        self.show_ai_stream_checkbox = SettingsCheckbox(
+            "Show AI Response Stream",
+            main_layout,
+            is_checked=self.config_data['Settings'].get('Show AI Response Stream', False),
+            on_change=self.save_settings,
+            tooltip="When enabled, a modal shows the AI's response streaming in live while generating a resume or checking a rating"
+        )
+
         # GPT Model Setting
         model_layout = QVBoxLayout()
         model_layout.setSpacing(8)
@@ -2002,6 +2078,68 @@ class ResumeApp(QMainWindow):
 
         main_layout.addLayout(model_layout)
 
+        # Anthropic Thinking Settings
+        anthropic_settings = self.config_data['Settings'].get('Anthropic', {})
+
+        combo_style = """
+            QComboBox {
+                padding: 10px;
+                font-size: 11pt;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                background-color: white;
+            }
+            QComboBox:focus {
+                border: 2px solid #4CAF50;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 30px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #666;
+                margin-right: 10px;
+            }
+        """
+
+        thinking_layout = QVBoxLayout()
+        thinking_layout.setSpacing(8)
+
+        thinking_label = QLabel("Claude Thinking Type:")
+        thinking_label.setStyleSheet("font-size: 12pt; font-weight: bold; color: #333;")
+        thinking_layout.addWidget(thinking_label)
+
+        self.thinking_type_combo = QComboBox()
+        self.thinking_type_combo.addItems(["adaptive", "disabled"])
+        self.thinking_type_combo.setCurrentText(anthropic_settings.get('Thinking Type', 'adaptive'))
+        self.thinking_type_combo.setMinimumHeight(40)
+        self.thinking_type_combo.setStyleSheet(combo_style)
+        self.thinking_type_combo.currentTextChanged.connect(self.save_settings)
+        thinking_layout.addWidget(self.thinking_type_combo)
+
+        main_layout.addLayout(thinking_layout)
+
+        # Effort Setting
+        effort_layout = QVBoxLayout()
+        effort_layout.setSpacing(8)
+
+        effort_label = QLabel("Claude Thinking Effort:")
+        effort_label.setStyleSheet("font-size: 12pt; font-weight: bold; color: #333;")
+        effort_layout.addWidget(effort_label)
+
+        self.effort_combo = QComboBox()
+        self.effort_combo.addItems(["low", "medium", "high", "xhigh"])
+        self.effort_combo.setCurrentText(anthropic_settings.get('Effort', 'medium'))
+        self.effort_combo.setMinimumHeight(40)
+        self.effort_combo.setStyleSheet(combo_style)
+        self.effort_combo.currentTextChanged.connect(self.save_settings)
+        effort_layout.addWidget(self.effort_combo)
+
+        main_layout.addLayout(effort_layout)
+
         # Add stretch to push content to top
         main_layout.addStretch()
 
@@ -2013,12 +2151,17 @@ class ResumeApp(QMainWindow):
         # Update config data
         self.config_data['Settings']['Auto Archive Expired Applications'] = self.auto_archive_checkbox.isChecked()
         self.config_data['Settings']['Auto Archive Expired Favorite Applications'] = self.auto_archive_favorites_checkbox.isChecked()
+        self.config_data['Settings']['Show AI Response Stream'] = self.show_ai_stream_checkbox.isChecked()
         self.config_data['Settings']['Current Model'] = self.model_combo.currentText()
+
+        self.config_data['Settings'].setdefault('Anthropic', {})
+        self.config_data['Settings']['Anthropic']['Thinking Type'] = self.thinking_type_combo.currentText()
+        self.config_data['Settings']['Anthropic']['Effort'] = self.effort_combo.currentText()
 
         # Save to file using Utility function
         update_config(self.config_data)
 
-        print(f"Settings saved: Auto Archive = {self.auto_archive_checkbox.isChecked()}, Auto Archive Favorites = {self.auto_archive_favorites_checkbox.isChecked()}, Model = {self.model_combo.currentText()}")
+        print(f"Settings saved: Auto Archive = {self.auto_archive_checkbox.isChecked()}, Auto Archive Favorites = {self.auto_archive_favorites_checkbox.isChecked()}, Show AI Stream = {self.show_ai_stream_checkbox.isChecked()}, Model = {self.model_combo.currentText()}, Thinking Type = {self.thinking_type_combo.currentText()}, Effort = {self.effort_combo.currentText()}")
 
     #endregion
 
