@@ -30,6 +30,7 @@ class HistoryItem(QWidget):
 
         current_date = datetime.now()
 
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet("""
             QWidget {
                 background-color: white;
