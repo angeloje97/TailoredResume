@@ -2,9 +2,12 @@ import asyncio
 import json
 from datetime import datetime
 from PySide6.QtCore import QThread, Signal
-from PySide6.QtGui import QTextCursor
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from Agent import create_request
+from Components.AccentCheckbox import AccentCheckbox
+from Components.Button import Button
+from Components.StyledDialog import StyledDialog
+from Components.StreamTextView import StreamTextView
 from Utility import (json_template, full_base_resume_text, resume_template, cover_letter_template,
                       paths, save_json_obj, expand_list_to_keys, write_to_docx, clear_temp,
                       save_document_temp, copy_temp_to_results, convert_temp_to_pdf,
@@ -49,7 +52,8 @@ class ResumePage(QWidget):
         self._build_ui()
 
     def _build_ui(self):
-        from Widgets import InputText, InputTextBox
+        from Components.InputText import InputText
+        from Components.InputTextBox import InputTextBox
         """Create the resume generation page"""
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(15)
@@ -68,108 +72,31 @@ class ResumePage(QWidget):
         self.application_link = InputText("Application Link (Optional):", main_layout, "Paste the job posting URL here...")
 
         # Save Submission checkbox
-        self.save_submission_checkbox = QCheckBox("Save Submission (Not Applying - Save for Reference Only)")
-        self.save_submission_checkbox.setMinimumHeight(40)
-        self.save_submission_checkbox.setStyleSheet("""
-            QCheckBox {
-                font-size: 11pt;
-                color: #333;
-                padding: 8px;
-                background-color: #fff3e0;
-                border: 2px solid #ff9800;
-                border-radius: 8px;
-                padding-left: 12px;
-            }
-            QCheckBox:hover {
-                background-color: #ffe0b2;
-                border: 2px solid #f57c00;
-            }
-            QCheckBox::indicator {
-                width: 20px;
-                height: 20px;
-            }
-        """)
-        self.save_submission_checkbox.setToolTip("Check this if you're NOT applying but want to save this job for reference only. Documents won't be generated.")
+        self.save_submission_checkbox = AccentCheckbox(
+            "Save Submission (Not Applying - Save for Reference Only)",
+            hover_border="#f57c00", hover_background="#ffe0b2",
+            background="#fff3e0", border="#ff9800", font_size=11, padding=8,
+            tooltip="Check this if you're NOT applying but want to save this job for reference only. Documents won't be generated."
+        )
         main_layout.addWidget(self.save_submission_checkbox)
 
         # Generate / Check Rating buttons
         generate_row = QHBoxLayout()
 
-        self.generate_button = QPushButton("Generate")
-        self.generate_button.setMinimumHeight(50)
-        self.generate_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                font-size: 14pt;
-                font-weight: bold;
-                border: none;
-                border-radius: 5px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:pressed {
-                background-color: #3d8b40;
-            }
-        """)
-        self.generate_button.clicked.connect(lambda: self.on_generate())
+        self.generate_button = Button("Generate", lambda: self.on_generate(), size="large")
         generate_row.addWidget(self.generate_button)
 
-        self.check_rating_button = QPushButton("Check Rating")
-        self.check_rating_button.setMinimumHeight(50)
-        self.check_rating_button.setStyleSheet("""
-            QPushButton {
-                background-color: #2c3e50;
-                color: white;
-                font-size: 14pt;
-                font-weight: bold;
-                border: none;
-                border-radius: 5px;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #34495e;
-            }
-            QPushButton:pressed {
-                background-color: #1b2733;
-            }
-        """)
-        self.check_rating_button.clicked.connect(self.on_check_rating)
+        self.check_rating_button = Button("Check Rating", self.on_check_rating, variant="dark", size="large")
         generate_row.addWidget(self.check_rating_button)
 
         main_layout.addLayout(generate_row)
 
     def show_stream_modal(self, title):
         """Show a non-blocking modal that displays streamed AI output as it's received"""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit
+        dialog = StyledDialog(self, title, min_size=(500, 400), margin=15, spacing=None)
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle(title)
-        dialog.setMinimumSize(500, 400)
-        dialog.setStyleSheet("""
-            QDialog {
-                background-color: white;
-            }
-        """)
-
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(15, 15, 15, 15)
-
-        text_edit = QTextEdit()
-        text_edit.setReadOnly(True)
-        text_edit.setStyleSheet("""
-            QTextEdit {
-                font-family: Consolas, monospace;
-                font-size: 10pt;
-                background-color: #f5f5f5;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 8px;
-            }
-        """)
-        layout.addWidget(text_edit)
+        text_edit = StreamTextView()
+        dialog.body.addWidget(text_edit)
 
         self.stream_dialog = dialog
         self.stream_text_edit = text_edit
@@ -181,9 +108,7 @@ class ResumePage(QWidget):
             return
         if getattr(self, 'stage_timeline', None) is not None and self.stage_timeline.current_stage < 2:
             self.stage_timeline.set_stage(2)  # Generating Response
-        self.stream_text_edit.moveCursor(QTextCursor.End)
-        self.stream_text_edit.insertPlainText(text)
-        self.stream_text_edit.moveCursor(QTextCursor.End)
+        self.stream_text_edit.append_chunk(text)
 
     def close_stream_modal(self):
         """Close the stream modal, if it's open"""
@@ -196,37 +121,16 @@ class ResumePage(QWidget):
 
     def show_progress_modal(self, title, stages):
         """Show a non-blocking modal with a stage timeline and streamed AI output"""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QLabel, QPushButton
+        from PySide6.QtWidgets import QLabel
         from Pages.Resume.StageTimeline import StageTimeline
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle(title)
-        dialog.setMinimumSize(560, 440)
-        dialog.setStyleSheet("""
-            QDialog {
-                background-color: white;
-            }
-        """)
-
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        dialog = StyledDialog(self, title, min_size=(560, 440))
+        layout = dialog.body
 
         timeline = StageTimeline(stages)
         layout.addWidget(timeline)
 
-        text_edit = QTextEdit()
-        text_edit.setReadOnly(True)
-        text_edit.setStyleSheet("""
-            QTextEdit {
-                font-family: Consolas, monospace;
-                font-size: 10pt;
-                background-color: #f5f5f5;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 8px;
-            }
-        """)
+        text_edit = StreamTextView()
         layout.addWidget(text_edit)
 
         status_label = QLabel("")
@@ -234,27 +138,8 @@ class ResumePage(QWidget):
         status_label.setVisible(False)
         layout.addWidget(status_label)
 
-        close_button = QPushButton("Close")
-        close_button.setMinimumHeight(40)
+        close_button = Button("Close", self.close_progress_modal)
         close_button.setVisible(False)
-        close_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                font-size: 11pt;
-                font-weight: bold;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:pressed {
-                background-color: #3d8b40;
-            }
-        """)
-        close_button.clicked.connect(self.close_progress_modal)
         layout.addWidget(close_button)
 
         self.stream_dialog = dialog
@@ -379,36 +264,14 @@ class ResumePage(QWidget):
 
     def show_rating_modal(self, match_rating, match_rating_description, job_quality, job_quality_description):
         """Show a modal with the match rating and job quality, with options to close or generate the resume"""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+        from PySide6.QtWidgets import QLabel
+        from Components.RatingBadge import rating_colors
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Rating")
-        dialog.setMinimumWidth(420)
-        dialog.setStyleSheet("""
-            QDialog {
-                background-color: white;
-            }
-        """)
-
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
-
-        title_label = QLabel("Rating Results")
-        title_label.setStyleSheet("font-size: 14pt; font-weight: bold;")
-        layout.addWidget(title_label)
+        dialog = StyledDialog(self, "Rating", heading="Rating Results", min_width=420)
+        layout = dialog.body
 
         def rating_color_for(value):
-            try:
-                value = float(value)
-            except (TypeError, ValueError):
-                return "#c62828"
-            if value >= 8:
-                return "#2e7d32"
-            elif value >= 5:
-                return "#f57c00"
-            else:
-                return "#c62828"
+            return rating_colors(value)[0]
 
         match_rating_label = QLabel(f"⭐ Match Rating: {match_rating}/10")
         match_rating_label.setStyleSheet(f"font-size: 20pt; font-weight: bold; color: {rating_color_for(match_rating)};")
@@ -432,46 +295,8 @@ class ResumePage(QWidget):
         button_layout.setSpacing(10)
         button_layout.setContentsMargins(0, 10, 0, 0)
 
-        close_btn = QPushButton("Close")
-        close_btn.setMinimumHeight(40)
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f5f5f5;
-                color: #333;
-                font-size: 11pt;
-                font-weight: bold;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-                padding: 8px 16px;
-            }
-            QPushButton:hover {
-                background-color: #e0e0e0;
-            }
-        """)
-        close_btn.clicked.connect(dialog.reject)
-        button_layout.addWidget(close_btn)
-
-        generate_btn = QPushButton("Generate Resume")
-        generate_btn.setMinimumHeight(40)
-        generate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                font-size: 11pt;
-                font-weight: bold;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:pressed {
-                background-color: #3d8b40;
-            }
-        """)
-        generate_btn.clicked.connect(dialog.accept)
-        button_layout.addWidget(generate_btn)
+        button_layout.addWidget(Button("Close", dialog.reject, variant="secondary"))
+        button_layout.addWidget(Button("Generate Resume", dialog.accept))
 
         layout.addLayout(button_layout)
 

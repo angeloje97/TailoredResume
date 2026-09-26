@@ -1,6 +1,8 @@
-from datetime import datetime
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from Components.Badge import Badge
+from Components.RatingBadge import RatingBadge
+from Components.DateRangeBadge import DateRangeBadge
 
 
 class HistoryItem(QWidget):
@@ -27,8 +29,6 @@ class HistoryItem(QWidget):
         job_quality = float(job_data.get('Job Quality', 5))
         save_submission = job_data.get('Save Submission', False)
         application_link = job_data.get('Application Link', '')
-
-        current_date = datetime.now()
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet("""
@@ -58,157 +58,18 @@ class HistoryItem(QWidget):
         header_layout.addStretch()
 
         if salary:
-            salary_label = QLabel(f"💰 {salary}")
-            salary_label.setStyleSheet("""
-                font-size: 10pt;
-                color: #2e7d32;
-                font-weight: 600;
-                background-color: #e8f5e9;
-                padding: 4px 10px;
-                border-radius: 6px;
-            """)
-            header_layout.addWidget(salary_label)
+            header_layout.addWidget(Badge(f"💰 {salary}", color="#2e7d32", background="#e8f5e9",
+                                          font_size=10, weight="600"))
 
-        # Job Quality badge
-        if job_quality is not None:
-            # Determine color based on job quality
-            if job_quality >= 8:
-                quality_color = "#2e7d32"  # Dark green
-                quality_bg = "#e8f5e9"     # Light green bg
-            elif job_quality >= 5:
-                quality_color = "#ef6c00"  # Dark orange
-                quality_bg = "#fff3e0"     # Light orange bg
-            else:
-                quality_color = "#c62828"  # Dark red
-                quality_bg = "#ffebee"     # Light red bg
+        header_layout.addWidget(RatingBadge("💎", job_quality))
+        header_layout.addWidget(RatingBadge("⭐", match_rating))
 
-            quality_label = QLabel(f"💎 {job_quality}/10")
-            quality_label.setStyleSheet(f"""
-                font-size: 10pt;
-                color: {quality_color};
-                font-weight: 600;
-                background-color: {quality_bg};
-                padding: 4px 10px;
-                border-radius: 6px;
-            """)
-            header_layout.addWidget(quality_label)
-
-        if match_rating is not None:
-            # Determine color based on rating
-            if match_rating >= 8:
-                rating_color = "#2e7d32"  # Dark green
-                rating_bg = "#e8f5e9"     # Light green bg
-            elif match_rating >= 5:
-                rating_color = "#ef6c00"  # Dark orange
-                rating_bg = "#fff3e0"     # Light orange bg
-            else:
-                rating_color = "#c62828"  # Dark red
-                rating_bg = "#ffebee"     # Light red bg
-
-            match_label = QLabel(f"⭐ {match_rating}/10")
-            match_label.setStyleSheet(f"""
-                font-size: 10pt;
-                color: {rating_color};
-                font-weight: 600;
-                background-color: {rating_bg};
-                padding: 4px 10px;
-                border-radius: 6px;
-            """)
-            header_layout.addWidget(match_label)
-
-        # Date range label
-        date_range_text = f"{start_date} - {end_date}"
-        date_label = QLabel(date_range_text)
-
-        # Parse dates and calculate elapsed time
-        try:
-            start_date_obj = datetime.strptime(start_date, "%m/%d/%y")
-            end_date_obj = datetime.strptime(end_date, "%m/%d/%y")
-
-            # Calculate total duration and elapsed time
-            total_duration = (end_date_obj - start_date_obj).total_seconds()
-            elapsed_time = (current_date - start_date_obj).total_seconds()
-
-            # Calculate progress ratio
-            if total_duration > 0:
-                progress_ratio = elapsed_time / total_duration
-            else:
-                progress_ratio = 0
-
-            # Determine color based on progress
-            if progress_ratio < 0:
-                # Not started yet - blue/gray
-                date_label.setStyleSheet("""
-                    font-size: 9pt;
-                    color: #757575;
-                    background-color: #f5f5f5;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                """)
-            elif progress_ratio < 1/3:
-                # First third - green
-                date_label.setStyleSheet("""
-                    font-size: 9pt;
-                    color: white;
-                    background-color: #4CAF50;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-weight: bold;
-                """)
-            elif progress_ratio < 2/3:
-                # Second third - yellow/orange
-                date_label.setStyleSheet("""
-                    font-size: 9pt;
-                    color: white;
-                    background-color: #FF9800;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-weight: bold;
-                """)
-            elif progress_ratio <= 1:
-                # Final third - red
-                date_label.setStyleSheet("""
-                    font-size: 9pt;
-                    color: white;
-                    background-color: #f44336;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-weight: bold;
-                """)
-            else:
-                # Past due - dark red
-                date_label.setStyleSheet("""
-                    font-size: 9pt;
-                    color: white;
-                    background-color: #c62828;
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-weight: bold;
-                """)
-        except:
-            # If date parsing fails, use default style
-            date_label.setStyleSheet("""
-                font-size: 9pt;
-                color: #757575;
-                background-color: #f5f5f5;
-                padding: 4px 10px;
-                border-radius: 6px;
-            """)
-
-        header_layout.addWidget(date_label)
+        # Date range badge, colored by how long we've been waiting for a response
+        header_layout.addWidget(DateRangeBadge(start_date, end_date))
 
         # Save Submission badge (always created, visibility controlled)
-        save_submission_badge = QLabel("📋 Saved")
-        save_submission_badge.setStyleSheet("""
-            font-size: 9pt;
-            color: #ff6f00;
-            font-weight: 600;
-            background-color: #fff3e0;
-            padding: 4px 10px;
-            border-radius: 6px;
-            border: 2px solid #ff9800;
-        """)
-        save_submission_badge.setToolTip("This is a saved submission (not applying)")
+        save_submission_badge = Badge("📋 Saved", color="#ff6f00", background="#fff3e0", weight="600",
+                                      border="#ff9800", tooltip="This is a saved submission (not applying)")
         save_submission_badge.setVisible(save_submission)
         header_layout.addWidget(save_submission_badge)
 
@@ -290,7 +151,8 @@ class HistoryItem(QWidget):
         details_widget.mousePressEvent = lambda e: e.accept()
 
         # Action bar at the top of expanded section
-        from Widgets import ActionBarButton, ToggleActionBarButton
+        from Components.ActionBarButton import ActionBarButton
+        from Components.ToggleActionBarButton import ToggleActionBarButton
 
         action_bar = QWidget()
         action_bar.setStyleSheet("""
@@ -362,10 +224,9 @@ class HistoryItem(QWidget):
             update_favorite_style(data['Meta']['Favorite'])
 
             # Update the history item data for filtering
-            for item_data in self.page.history_items:
-                if item_data['widget'] == self:
-                    item_data['favorite'] = data['Meta']['Favorite']
-                    break
+            entry = self.page.find_entry(data)
+            if entry:
+                entry['favorite'] = data['Meta']['Favorite']
 
             print(f"{'Favorited' if data['Meta']['Favorite'] else 'Unfavorited'}: {data['Job']['Position Title']} at {data['Job']['Company Name']}")
 
@@ -397,6 +258,11 @@ class HistoryItem(QWidget):
             # Update badge visibility in header
             save_submission_badge.setVisible(data['Job']['Save Submission'])
 
+            # Update the history item data for filtering
+            entry = self.page.find_entry(data)
+            if entry:
+                entry['save_submission'] = data['Job']['Save Submission']
+
             print(f"{'Save Submission enabled' if data['Job']['Save Submission'] else 'Save Submission disabled'}: {data['Job']['Position Title']} at {data['Job']['Company Name']}")
 
         save_submission_btn.mousePressEvent = on_save_submission_click
@@ -415,7 +281,7 @@ class HistoryItem(QWidget):
 
         #region Details
 
-        from Widgets import LabelDescription
+        from Components.LabelDescription import LabelDescription
 
         # Job Description
 

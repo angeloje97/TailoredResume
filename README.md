@@ -342,7 +342,8 @@ Settings are saved to `Config.json`. You need a valid API key in `.env` for whic
 │   ├── Main.py              # GUI application (entry point)
 │   ├── Utility.py           # Document processing
 │   ├── Agent.py             # OpenAI + Anthropic API integration
-│   └── Widgets.py           # Reusable UI components
+│   ├── Pages/               # One folder per GUI page (Resume, History)
+│   └── Components/          # Reusable UI components, one per file
 ├── .env                      # API keys (create this)
 ├── Config.json              # Application settings
 ├── requirements.txt         # Python dependencies
