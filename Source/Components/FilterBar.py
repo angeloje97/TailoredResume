@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QHBoxLayout
 from Components.StyledLineEdit import StyledLineEdit
 from Components.StyledComboBox import StyledComboBox
 from Components.AccentCheckbox import AccentCheckbox
+from Components.WorkArrangementBadge import WORK_ARRANGEMENTS, STYLES, normalize_work_arrangement
 
 SCORE_OPTIONS = ["1+", "2+", "3+", "4+", "5+", "6+", "7+", "8+", "9+", "10"]
 
@@ -21,7 +22,8 @@ def filter_fields(data):
         'job_quality': float(job_data.get('Job Quality', 0)),
         'date_created': data['Meta']['Date Created'],
         'favorite': data['Meta'].get('Favorite', False),
-        'save_submission': job_data.get('Save Submission', False)
+        'save_submission': job_data.get('Save Submission', False),
+        'work_arrangement': normalize_work_arrangement(job_data.get('Work Arrangement'))
     }
 
 
@@ -43,7 +45,7 @@ def build_filter_entries(datas):
 
 class FilterBar(QHBoxLayout):
     """
-    Search + filter controls row (search text, min match rating, min job quality, date range,
+    Search + filter controls row (search text, min match rating, min job quality, date range, work arrangement,
     and optional favorites / saved-submission toggles), combined with AND logic.
 
     Add it to a page with `layout.addLayout(filter_bar)`, then call `matches(filter_fields(data))`
@@ -68,6 +70,7 @@ class FilterBar(QHBoxLayout):
         self.min_rating = dropdown(["All Ratings"] + SCORE_OPTIONS)
         self.min_quality = dropdown(["All Quality"] + SCORE_OPTIONS)
         self.date_filter = dropdown(list(DATE_OPTIONS))
+        self.work_arrangement = dropdown(["Any Work Type"] + [f"{STYLES[a][0]} {a}" for a in WORK_ARRANGEMENTS])
 
         # Optional favorites checkbox
         self.favorites = None
@@ -90,6 +93,7 @@ class FilterBar(QHBoxLayout):
         self.min_rating.setCurrentIndex(0)
         self.min_quality.setCurrentIndex(0)
         self.date_filter.setCurrentIndex(0)
+        self.work_arrangement.setCurrentIndex(0)
         if self.favorites:
             self.favorites.setChecked(False)
         if self.saved:
@@ -112,6 +116,11 @@ class FilterBar(QHBoxLayout):
             item_date = datetime.fromisoformat(item['date_created']).date()
             if item_date < (datetime.now() - timedelta(days=days_back)).date():
                 return False
+
+        # First option is "Any Work Type"; the rest line up with WORK_ARRANGEMENTS
+        arrangement_index = self.work_arrangement.currentIndex()
+        if arrangement_index > 0 and item['work_arrangement'] != WORK_ARRANGEMENTS[arrangement_index - 1]:
+            return False
 
         if self.favorites and self.favorites.isChecked() and not item['favorite']:
             return False

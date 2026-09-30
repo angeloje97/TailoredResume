@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from datetime import datetime
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
@@ -8,10 +9,11 @@ from Components.AccentCheckbox import AccentCheckbox
 from Components.Button import Button
 from Components.StyledDialog import StyledDialog
 from Components.StreamTextView import StreamTextView
-from Utility import (json_template, full_base_resume_text, resume_template, cover_letter_template,
-                      paths, save_json_obj, expand_list_to_keys, write_to_docx, clear_temp,
-                      save_document_temp, copy_temp_to_results, convert_temp_to_pdf,
-                      get_templates, play_notification_sound, get_config)
+from Components.ElapsedTimeLabel import ElapsedTimeLabel
+from Components.AsyncLoader import AsyncLoader
+from Components.WorkArrangementBadge import WorkArrangementBadge, normalize_work_arrangement
+from Utility import (json_template, full_base_resume_text, paths, save_json_obj, expand_list_to_keys,
+                      build_documents, get_templates, play_notification_sound, get_config, sanitize_file_name)
 from icecream import ic
 
 
@@ -91,15 +93,20 @@ class ResumePage(QWidget):
 
         main_layout.addLayout(generate_row)
 
-    def show_stream_modal(self, title):
+    def show_stream_modal(self, title, started_at=None):
         """Show a non-blocking modal that displays streamed AI output as it's received"""
         dialog = StyledDialog(self, title, min_size=(500, 400), margin=15, spacing=None)
+
+        elapsed_label = ElapsedTimeLabel()
+        elapsed_label.start(started_at)
+        dialog.body.addWidget(elapsed_label)
 
         text_edit = StreamTextView()
         dialog.body.addWidget(text_edit)
 
         self.stream_dialog = dialog
         self.stream_text_edit = text_edit
+        self.stream_elapsed_label = elapsed_label
         dialog.show()
 
     def on_stream_chunk(self, text):
@@ -116,10 +123,11 @@ class ResumePage(QWidget):
             self.stream_dialog.close()
             self.stream_dialog = None
             self.stream_text_edit = None
+            self.stream_elapsed_label = None
 
     #region Progress Modal (Generate Resume)
 
-    def show_progress_modal(self, title, stages):
+    def show_progress_modal(self, title, stages, started_at=None):
         """Show a non-blocking modal with a stage timeline and streamed AI output"""
         from PySide6.QtWidgets import QLabel
         from Pages.Resume.StageTimeline import StageTimeline
@@ -129,6 +137,10 @@ class ResumePage(QWidget):
 
         timeline = StageTimeline(stages)
         layout.addWidget(timeline)
+
+        elapsed_label = ElapsedTimeLabel()
+        elapsed_label.start(started_at)
+        layout.addWidget(elapsed_label)
 
         text_edit = StreamTextView()
         layout.addWidget(text_edit)
@@ -147,6 +159,7 @@ class ResumePage(QWidget):
         self.stage_timeline = timeline
         self.progress_status_label = status_label
         self.progress_close_button = close_button
+        self.stream_elapsed_label = elapsed_label
         dialog.show()
 
     def finish_progress_modal(self, success, message):
@@ -155,6 +168,8 @@ class ResumePage(QWidget):
             # No enhanced progress modal in use for this request - fall back to a plain close
             self.close_stream_modal()
             return
+
+        self.stream_elapsed_label.stop("Finished in" if success else "Failed after")
 
         if success:
             self.stage_timeline.complete()
@@ -176,6 +191,7 @@ class ResumePage(QWidget):
         self.stage_timeline = None
         self.progress_status_label = None
         self.progress_close_button = None
+        self.stream_elapsed_label = None
 
     #endregion
 
@@ -187,15 +203,18 @@ class ResumePage(QWidget):
         """
         from Utility import get_config
 
+        started_at = time.monotonic()
+
         show_stream = get_config()['Settings'].get('Show AI Response Stream', False)
         if show_stream:
             if stages:
-                self.show_progress_modal(stream_title, stages)
+                self.show_progress_modal(stream_title, stages, started_at)
                 self.stage_timeline.set_stage(0)  # Parsing Information
             else:
-                self.show_stream_modal(stream_title)
+                self.show_stream_modal(stream_title, started_at)
 
         worker = AIWorker(message)
+        worker.started_at = started_at  # So handlers can report total time taken
         if show_stream and stages:
             worker.started.connect(lambda: self.stage_timeline.set_stage(1))  # Thinking
         worker.chunk.connect(self.on_stream_chunk)
@@ -207,7 +226,9 @@ class ResumePage(QWidget):
     def on_check_rating(self):
         """Handle the check rating button click"""
 
-        from Utility import full_base_resume_text, match_rating_prompt, job_quality_prompt
+        # Reload prompts so edits to Resources/*.md apply without restarting
+        get_templates()
+        from Utility import full_base_resume_text, match_rating_prompt, job_quality_prompt, json_template
 
         job_title = self.job_title.text()
         company_name = self.company_name.text()
@@ -217,7 +238,8 @@ class ResumePage(QWidget):
             'Match Rating': 'Scale from 1-10',
             'Match Rating Description': '',
             'Job Quality': 'Scale from 1-10',
-            'Job Quality Description': ''
+            'Job Quality Description': '',
+            'Work Arrangement': json_template['Job']['Work Arrangement']
         }
 
         message = f'Current Resumes : {full_base_resume_text}\n'
@@ -247,12 +269,15 @@ class ResumePage(QWidget):
         self.current_match_rating_description = data['Match Rating Description']
         self.current_job_quality = data['Job Quality']
         self.current_job_quality_description = data['Job Quality Description']
+        self.current_work_arrangement = normalize_work_arrangement(data.get('Work Arrangement'))
 
         self.show_rating_modal(
             self.current_match_rating,
             self.current_match_rating_description,
             self.current_job_quality,
-            self.current_job_quality_description
+            self.current_job_quality_description,
+            self.current_work_arrangement,
+            elapsed_seconds=time.monotonic() - self.rating_worker.started_at
         )
 
     def on_rating_error(self, error_message):
@@ -262,34 +287,42 @@ class ResumePage(QWidget):
         self.check_rating_button.setText("Check Rating")
         self.on_ai_error(error_message)
 
-    def show_rating_modal(self, match_rating, match_rating_description, job_quality, job_quality_description):
+    def show_rating_modal(self, match_rating, match_rating_description, job_quality, job_quality_description,
+                          work_arrangement="Unknown", elapsed_seconds=None):
         """Show a modal with the match rating and job quality, with options to close or generate the resume"""
         from PySide6.QtWidgets import QLabel
         from Components.RatingBadge import rating_colors
+        from Components.RatingBreakdown import RatingBreakdown
+        from Components.ScrollList import ScrollList
 
-        dialog = StyledDialog(self, "Rating", heading="Rating Results", min_width=420)
+        dialog = StyledDialog(self, "Rating", heading="Rating Results", min_width=560)
         layout = dialog.body
 
-        def rating_color_for(value):
-            return rating_colors(value)[0]
+        if elapsed_seconds is not None:
+            layout.addWidget(ElapsedTimeLabel(elapsed_seconds, prefix="Took"))
 
-        match_rating_label = QLabel(f"⭐ Match Rating: {match_rating}/10")
-        match_rating_label.setStyleSheet(f"font-size: 20pt; font-weight: bold; color: {rating_color_for(match_rating)};")
-        layout.addWidget(match_rating_label)
+        # Long descriptions scroll inside this area so the buttons below stay reachable
+        scroll = ScrollList(spacing=12, margins=(0, 0, 12, 0), align_top=True)
+        scroll.viewport().setStyleSheet("background-color: white;")
+        layout.addWidget(scroll, 1)
 
-        match_description_label = QLabel(match_rating_description)
-        match_description_label.setWordWrap(True)
-        match_description_label.setStyleSheet("font-size: 11pt; color: #333;")
-        layout.addWidget(match_description_label)
+        for title, value, description in (("Match Rating", match_rating, match_rating_description),
+                                          ("Job Quality", job_quality, job_quality_description)):
+            rating_label = QLabel(f"⭐ {title}: {value}/10")
+            rating_label.setStyleSheet(f"font-size: 18pt; font-weight: bold; color: {rating_colors(value)[0]};"
+                                       f" padding-top: 6px;")
+            scroll.add(rating_label)
+            scroll.add(RatingBreakdown(description))
 
-        job_quality_label = QLabel(f"⭐ Job Quality: {job_quality}/10")
-        job_quality_label.setStyleSheet(f"font-size: 20pt; font-weight: bold; color: {rating_color_for(job_quality)};")
-        layout.addWidget(job_quality_label)
+        # Cap the dialog at 80% of the screen height; the scroll area absorbs the rest
+        available = self.screen().availableGeometry()
+        dialog.setMaximumHeight(int(available.height() * 0.9))
+        dialog.resize(640, int(available.height() * 0.8))
 
-        quality_description_label = QLabel(job_quality_description)
-        quality_description_label.setWordWrap(True)
-        quality_description_label.setStyleSheet("font-size: 11pt; color: #333;")
-        layout.addWidget(quality_description_label)
+        work_arrangement_row = QHBoxLayout()
+        work_arrangement_row.addWidget(WorkArrangementBadge(work_arrangement, font_size=11))
+        work_arrangement_row.addStretch()
+        layout.addLayout(work_arrangement_row)
 
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
@@ -333,6 +366,7 @@ class ResumePage(QWidget):
             json_template['Job']['Match Rating Description'] = self.current_match_rating_description
             json_template['Job']['Job Quality'] = self.current_job_quality
             json_template['Job']['Job Quality Description'] = self.current_job_quality_description
+            json_template['Job']['Work Arrangement'] = self.current_work_arrangement
 
         message += f"Please respond in a parsable json format that looks like this: \n{json.dumps(json_template)}\n"
         message += f"Also make sure to fillout the cover page. The time this request was made is {current_date_time}"
@@ -355,7 +389,9 @@ class ResumePage(QWidget):
 
             data = json.loads(response)
 
-            clear_temp()
+            # AI-written names can contain characters Windows can't save (e.g. "React / Next.js")
+            for section in ('Meta', 'Resume', 'CoverLetter'):
+                data[section]['File Name'] = sanitize_file_name(data[section]['File Name'])
 
             play_notification_sound()
 
@@ -395,6 +431,7 @@ class ResumePage(QWidget):
 
             data['Job']['Save Submission'] = save_submission
             data['Job']['Application Link'] = application_link
+            data['Job']['Work Arrangement'] = normalize_work_arrangement(data['Job'].get('Work Arrangement'))
 
             #endregion
 
@@ -402,39 +439,29 @@ class ResumePage(QWidget):
 
             save_json_obj(expand_list_to_keys(data, ""), f"{data['Meta']['File Name']}")
 
-            # Only generate documents if NOT a "Save Submission"
-            if not save_submission:
-                #region Filling Documents
-
-
-                resume_doc = write_to_docx(resume_template, resume_data)
-                cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
-
-                save_document_temp(resume_doc, resume_name)
-                save_document_temp(cover_letter_doc, cover_letter_name)
-
-                convert_temp_to_pdf()
-
-                copy_temp_to_results()
-
-
-
-                #endregion
-
-            # Re-enable button
-            self.generate_button.setEnabled(True)
-            self.generate_button.setText("Generate Resume")
-
             if save_submission:
+                # Only save JSON, skip document generation
+                self.generate_button.setEnabled(True)
+                self.generate_button.setText("Generate Resume")
                 print("Job saved successfully (no documents generated - Save Submission mode)")
                 self.finish_progress_modal(True, "Job saved successfully! No documents were generated (Save Submission mode).")
             else:
-                print("Resume generated successfully!")
-                self.finish_progress_modal(True, "Resume and cover letter generated successfully!")
+                # Filling templates + PDF conversion (Word) takes seconds, so do it off the GUI thread
+                self.documents_worker = AsyncLoader(lambda: build_documents(resume_data, cover_letter_data), self)
+                self.documents_worker.loaded.connect(self.on_documents_built)
+                self.documents_worker.failed.connect(self.on_ai_error)
+                self.documents_worker.start()
         except Exception as e:
             import traceback
             ic(type(e).__name__, str(e), response, traceback.format_exc())
             self.on_ai_error(str(e))
+
+    def on_documents_built(self, _):
+        """Handle the background document build finishing successfully"""
+        self.generate_button.setEnabled(True)
+        self.generate_button.setText("Generate Resume")
+        print("Resume generated successfully!")
+        self.finish_progress_modal(True, "Resume and cover letter generated successfully!")
 
     def on_ai_error(self, error_msg):
         """Handle AI request errors"""

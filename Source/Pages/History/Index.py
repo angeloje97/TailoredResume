@@ -1,11 +1,10 @@
 import sys
 from datetime import datetime
 from PySide6.QtWidgets import QLabel, QMessageBox
-from Utility import (paths, expand_list_to_keys, write_to_docx, clear_temp,
-                      save_document_temp, copy_temp_to_results, convert_temp_to_pdf,
-                      resume_template, cover_letter_template)
+from Utility import paths, expand_list_to_keys, build_documents
 from Pages.History.HistoryItem import HistoryItem
 from Components.PagedListPage import PagedListPage
+from Components.AsyncLoader import AsyncLoader
 from Components.ConfirmDialog import ConfirmDialog
 from Components.StyledDialog import StyledDialog
 from Components.Button import Button
@@ -203,18 +202,28 @@ class FilesPage(PagedListPage):
             subprocess.run(['open', results_path] if sys.platform == 'darwin' else ['xdg-open', results_path])
 
     def generate_documents(self, data):
-        """Generate documents (resume and cover letter) for a history item"""
-        clear_temp()
+        """Generate documents (resume and cover letter) for a history item, in the background"""
         resume_data = expand_list_to_keys(data['Resume'], "")
         cover_letter_data = data['CoverLetter']
+        title = f"{data['Job']['Position Title']} at {data['Job']['Company Name']}"
+        print(f"Generating documents: {title}")
 
-        resume_doc = write_to_docx(resume_template, resume_data)
-        cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
+        worker = AsyncLoader(lambda: build_documents(resume_data, cover_letter_data), self)
+        worker.loaded.connect(lambda _: self._on_documents_built(title, True))
+        worker.failed.connect(lambda error: self._on_documents_built(title, False, error))
+        worker.start()
 
-        save_document_temp(resume_doc, resume_data['File Name'])
-        save_document_temp(cover_letter_doc, cover_letter_data['File Name'])
-
-        convert_temp_to_pdf()
-
-        copy_temp_to_results()
+    def _on_documents_built(self, title, success, error=""):
+        message_box = QMessageBox(self)
+        if success:
+            message_box.setIcon(QMessageBox.Icon.Information)
+            message_box.setWindowTitle("Documents Generated")
+            message_box.setText(f"Resume and cover letter generated for {title}.")
+            message_box.setInformativeText("They're in the Results folder.")
+        else:
+            message_box.setIcon(QMessageBox.Icon.Warning)
+            message_box.setWindowTitle("Document Generation Failed")
+            message_box.setText(f"Could not generate documents for {title}.")
+            message_box.setInformativeText(error)
+        message_box.show()
 

@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel
 from Components.ActionBarButton import ActionBarButton
 from Components.RatingBadge import RatingBadge
 from Components.DateRangeBadge import DateRangeBadge
+from Components.WorkArrangementBadge import WorkArrangementBadge
 
 
 class ArchiveItem(QWidget):
@@ -66,6 +67,7 @@ class ArchiveItem(QWidget):
 
         item_layout.addStretch()
 
+        item_layout.addWidget(WorkArrangementBadge(job_data.get('Work Arrangement'), font_size=9))
         item_layout.addWidget(RatingBadge("💎", job_quality, font_size=9))
         item_layout.addWidget(RatingBadge("⭐", match_rating, font_size=9))
 

@@ -1,11 +1,17 @@
 from pathlib import Path
 from icecream import ic
 from docx import Document
+from docx.oxml.ns import qn
+from docx.table import Table
+from docx.text.hyperlink import Hyperlink
+from docx.text.paragraph import Paragraph
 from docx2pdf import convert
 from pygame import mixer
 import json
+import re
 import shutil
 import os
+import threading
 from datetime import datetime
 
 #region Global Variables
@@ -107,13 +113,101 @@ def modify_docx(docx_path, modifier) -> Document:
 
     return doc
 
-def get_docx_text(docx_path):
+#region Docx text extraction (for feeding documents to the AI)
 
-    full_text = []
+_MC_FALLBACK = '{http://schemas.openxmlformats.org/markup-compatibility/2006}Fallback'
 
-    scan_docx(docx_path, lambda s: full_text.append(s))
+def _paragraph_line(paragraph) -> str:
+    """One paragraph as a line of text, marking headings ('# ') and list items ('- ') and keeping link URLs."""
+    parts = []
+    for item in paragraph.iter_inner_content():
+        if isinstance(item, Hyperlink):
+            url = item.url
+            parts.append(f"{item.text} ({url})" if url and url not in item.text else item.text)
+        else:
+            parts.append(item.text)
+    text = re.sub(r'\s+', ' ', ''.join(parts)).strip()
+    if not text:
+        return ""
 
-    return full_text
+    style = paragraph.style.name if paragraph.style is not None else ""
+    if style == "Title":
+        return f"# {text}"
+    if style.startswith("Heading"):
+        level = style.split()[-1]
+        return f"{'#' * (int(level) + 1 if level.isdigit() else 2)} {text}"
+    has_numbering = paragraph._p.pPr is not None and paragraph._p.pPr.numPr is not None
+    if has_numbering or "List" in style:
+        return f"- {text}"
+    return text
+
+def _text_boxes(p_element):
+    """Text box contents inside a paragraph, skipping the duplicate legacy (VML) copy Word saves alongside."""
+    for box in p_element.iter(qn('w:txbxContent')):
+        if not any(ancestor.tag == _MC_FALLBACK for ancestor in box.iterancestors()):
+            yield box
+
+def _table_lines(table):
+    lines = []
+    for row in table.rows:
+        seen = set()
+        cells = []
+        for cell in row.cells:
+            # Merged cells are returned once per column they span
+            if id(cell._tc) in seen:
+                continue
+            seen.add(id(cell._tc))
+            cells.append(list(_block_lines(cell._tc, cell)))
+
+        if all(len(cell) <= 1 for cell in cells):
+            # Data-style row: keep the columns together on one line
+            row_text = " | ".join(cell[0] for cell in cells if cell)
+            if row_text:
+                lines.append(row_text)
+        else:
+            # Layout table (common in resumes): read each cell top to bottom
+            for cell in cells:
+                lines.extend(cell)
+    return lines
+
+def _block_lines(container, parent):
+    """Lines for the paragraphs/tables in a body, cell, header, or text box, in document order."""
+    for child in container.iterchildren():
+        if child.tag == qn('w:p'):
+            line = _paragraph_line(Paragraph(child, parent))
+            if line:
+                yield line
+            for box in _text_boxes(child):
+                yield from _block_lines(box, parent)
+        elif child.tag == qn('w:tbl'):
+            yield from _table_lines(Table(child, parent))
+        elif child.tag == qn('w:sdt'):
+            # Content controls wrap ordinary paragraphs/tables
+            content = child.find(qn('w:sdtContent'))
+            if content is not None:
+                yield from _block_lines(content, parent)
+
+def get_docx_text(docx_path) -> list[str]:
+    """
+    Readable text of a .docx for the AI, in document order: headers, body (paragraphs, tables, text boxes), footers.
+    Headings are prefixed with '#', list items with '- ', and hyperlinks keep their URL.
+    """
+    doc = Document(docx_path)
+
+    def header_footer_lines(parts):
+        lines = []
+        for part in parts:
+            # Sections usually share (link to) the same header/footer, so skip repeats
+            if part.is_linked_to_previous and lines:
+                continue
+            lines.extend(line for line in _block_lines(part._element, part) if line not in lines)
+        return lines
+
+    return (header_footer_lines(section.header for section in doc.sections)
+            + list(_block_lines(doc.element.body, doc))
+            + header_footer_lines(section.footer for section in doc.sections))
+
+#endregion
 
 def get_templates():
     global paths
@@ -142,6 +236,9 @@ def get_templates():
 
     with open(job_quality_prompt_path, 'r', encoding="utf-8") as file:
         job_quality_prompt = file.read()
+
+    # Re-read BaseResumes too, so added/edited/moved resumes apply without restarting
+    get_resume_full_resume_text()
 
 def get_json_datas():
     global paths
@@ -311,17 +408,61 @@ def clear_temp():
 
 def convert_temp_to_pdf():
     global paths
-    
+
     path = paths['temp']
 
-    for file in os.listdir(path):
-        if not file.lower().endswith(".docx"):
-            continue
+    # docx2pdf drives Word over COM, which must be initialized on whichever thread calls it
+    # (the GUI thread already has it; background threads don't)
+    com_initialized = False
+    if os.name == 'nt':
+        import pythoncom
+        pythoncom.CoInitialize()
+        com_initialized = True
 
-        input_path = os.path.join(path, file)
-        output_path = os.path.join(path, file.replace(".docx", ".pdf"))
-        
-        convert(input_path, output_path)
+    try:
+        for file in os.listdir(path):
+            if not file.lower().endswith(".docx"):
+                continue
+
+            input_path = os.path.join(path, file)
+            output_path = os.path.join(path, file.replace(".docx", ".pdf"))
+
+            convert(input_path, output_path)
+    finally:
+        if com_initialized:
+            pythoncom.CoUninitialize()
+
+# Temp/ is shared, so only one document build may run at a time
+_build_documents_lock = threading.Lock()
+
+def build_documents(resume_data: dict, cover_letter_data: dict):
+    """
+    Fill the resume + cover letter templates, convert both to PDF, and copy them to Results/.
+
+    Slow (Word is launched for the PDF conversion), so call it from a background thread.
+    `resume_data` must already be flattened with expand_list_to_keys. Concurrent calls wait their turn.
+    """
+    with _build_documents_lock:
+        clear_temp()
+
+        resume_doc = write_to_docx(resume_template, resume_data)
+        cover_letter_doc = write_to_docx(cover_letter_template, cover_letter_data)
+
+        save_document_temp(resume_doc, resume_data['File Name'])
+        save_document_temp(cover_letter_doc, cover_letter_data['File Name'])
+
+        convert_temp_to_pdf()
+
+        copy_temp_to_results()
+
+def sanitize_file_name(name):
+    """Make an AI-generated name safe as a Windows file name, e.g. "Engineer (React / Next.js)" -> "Engineer (React - Next.js)"."""
+    name = re.sub(r'\s*[\\/|]\s*', ' - ', str(name))          # separators read naturally as a dash
+    name = re.sub(r'[<>:"?*\x00-\x1f]', '', name)              # other characters Windows forbids
+    name = re.sub(r'\s+', ' ', name).strip(' .')               # no trailing dots/spaces on Windows
+    if re.fullmatch(r'(?i)(con|prn|aux|nul|com\d|lpt\d)(\..*)?', name):
+        name = f"_{name}"                                      # reserved device names
+    return name[:150] or "Untitled"
 
 def save_json_obj(obj, file_name):
     global paths
@@ -384,12 +525,17 @@ def get_resume_full_resume_text() -> str:
     get_base_resumes()
 
     full_base_resume_text = ''
+    base_resume_texts.clear()
 
     for resume in base_resumes:
-        full_base_resume_text += f"\n{'-'*50}\n{resume.name}\n {'-'*50}\n"
-        text = get_docx_text(resume)
-        base_resume_texts.append('\n'.join(text))
-        full_base_resume_text += "\n".join(text)
+        try:
+            text = '\n'.join(get_docx_text(resume))
+        except Exception as e:
+            # One unreadable file shouldn't block every request
+            print(f"Could not read {resume.name}, skipping it\n{e}")
+            continue
+        base_resume_texts.append(text)
+        full_base_resume_text += f"\n{'-'*50}\n{resume.name}\n{'-'*50}\n{text}\n"
 
     return full_base_resume_text
 
@@ -407,8 +553,7 @@ def play_notification_sound():
 #region Main Script
 
 get_base_resumes()
-get_templates()
-get_resume_full_resume_text()
+get_templates()  # also loads the BaseResumes text
 
 # Populate base resume texts
 get_config()

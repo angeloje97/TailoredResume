@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBu
 from Components.Badge import Badge
 from Components.RatingBadge import RatingBadge
 from Components.DateRangeBadge import DateRangeBadge
+from Components.WorkArrangementBadge import WorkArrangementBadge
 
 
 class HistoryItem(QWidget):
@@ -61,6 +62,7 @@ class HistoryItem(QWidget):
             header_layout.addWidget(Badge(f"💰 {salary}", color="#2e7d32", background="#e8f5e9",
                                           font_size=10, weight="600"))
 
+        header_layout.addWidget(WorkArrangementBadge(job_data.get('Work Arrangement')))
         header_layout.addWidget(RatingBadge("💎", job_quality))
         header_layout.addWidget(RatingBadge("⭐", match_rating))
 

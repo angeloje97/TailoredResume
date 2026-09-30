@@ -1,6 +1,11 @@
   ## Steps. Job Quality rating, A number (float) from 0.0 to 10.0 calculated using this rubric:
      - A number on a scale from 1 to 10 on how good the job sounds in terms of work life balance, learning opportunity, work culture, red/green flags in the job description, and how well the things I learn from this job will transfer over to other better jobs. Can be a float
-     - +~2 points: Explicit mention of flexible hours, remote/hybrid work, generous or unlimited PTO that is described in a way that sounds genuinely usable (not just a slogan).
+     - Work arrangement (score this once, based on what the posting says):
+         - +~2 points: Fully remote.
+         - +~0 to +~1 points: Hybrid (more points for fewer required in-office days).
+         - -~3 points: Fully on-site / in office.
+         - +~0 points: Not stated.
+     - +~2 points: Explicit mention of flexible hours, generous or unlimited PTO that is described in a way that sounds genuinely usable (not just a slogan).
      - +~2 points: Modern, widely-used tech stack (e.g. .NET, C#, cloud platforms, common frameworks) whose skills clearly transfer to other roles in the market.
      - +~2 points: Clear signs of mentorship, structured onboarding, training budget, or a defined growth/promotion path.
      - +~1 point: Culture language suggesting collaboration, psychological safety, and reasonable pace (e.g. "we value work-life balance", "sustainable pace", "no on-call rotation").
@@ -11,3 +16,4 @@
      - -~1 to -~2 points: Compensation, benefits, or PTO not mentioned at all in a role where these are typically standard, or explicitly described as below-market.
      - -~1 point: Small or early-stage company with signs of instability (e.g. no funding info, very short company history, high turnover implied).
      - They don't have to be whole numbers. They can be a float.
+     - Description format: write one line per rubric item as `Item name (points): short reason`, separated by newlines (\n). Keep each reason to 1-2 sentences. End with a line `Overall: one-sentence summary`.

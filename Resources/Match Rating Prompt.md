@@ -9,4 +9,6 @@
      - -~2 to -~4 points: Government/defense jobs requiring active security clearance (Secret, Top Secret, TS/SCI) that I do not currently hold. Subtract more points for higher clearance levels as they are difficult to obtain without sponsorship and can take 6-12+ months.
      - +~0.5 points: Government jobs that are willing to sponsor clearance or accept candidates eligible for clearance (U.S. citizenship may be sufficient).
      - They don't have to be whole numbers. They can be a float.
-     - ~-3 Points if it requires me to be onsite or requires me to be in another country.
+     - ~-3 Points if it requires me to be in another country.
+     - Do NOT factor in whether the role is remote, hybrid, or on-site here. Work arrangement is scored in the Job Quality rating instead.
+     - Description format: write one line per rubric item as `Item name (points): short reason`, separated by newlines (\n). Keep each reason to 1-2 sentences. End with a line `Overall: one-sentence summary`.

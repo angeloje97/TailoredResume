@@ -58,6 +58,7 @@
         "Salary" : "{$USD | 'Equity' | 'Not Provided'}",
         "Description" : "2-3 Sentences explaining the position and company.",
         "Tech Stack": ["C#", ".Net", "Typescript", "...Max Top 10"],
+        "Work Arrangement": "Exactly one of: 'Remote' (fully remote), 'Hybrid', 'On-site' (fully in office), or 'Unknown' if the posting doesn't say",
         "Job Quality" : "A number on a scale from 1 to 10 on how good the job sounds in terms of work life balance, learning opportunity, work culture, red/green flags in the job description, and how well the things I learn from this job will transfer over to other better jobs. Can be a float",
         "Job Quality Description": "Explanation of why the job quality was given that rating.",
         "Company Size": "",
